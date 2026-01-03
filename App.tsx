@@ -4,7 +4,7 @@ import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
   BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
-  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck
+  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
@@ -13,12 +13,17 @@ import RecipeDisplay from './components/RecipeDisplay';
 import RecipeForm from './components/RecipeForm';
 import ImageUploader from './components/ImageUploader';
 import { dbService } from './services/dbService';
+import { useAuth, signOut } from './services/authService';
+import LoginScreen from './components/LoginScreen';
+
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
 
 type LibraryTab = 'review' | 'all' | 'favorites';
 
 const App: React.FC = () => {
+  const { user, loading } = useAuth();
+
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +47,15 @@ const App: React.FC = () => {
   const [collapsedLibraryCats, setCollapsedLibraryCats] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Only subscribe if user is logged in
+    if (!user) return;
+
     // Subscribe to Firestore updates
     const unsubscribe = dbService.subscribeToRecipes((recipes) => {
       setSavedRecipes(recipes);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const activeSavedRecipe = useMemo(() =>
     savedRecipes.find(r => r.id === activeSavedId),
@@ -281,6 +289,45 @@ const App: React.FC = () => {
     addNotification("גיבוי JSON הורד בהצלחה (קישורים לענן)", "success");
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 size={48} className="text-orange-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  // Access Control Gate
+  const allowedEmail = import.meta.env.VITE_ALLOWED_USER_EMAIL;
+  if (allowedEmail && user.email !== allowedEmail) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
+        <div className="bg-red-50 p-8 rounded-[2rem] border border-red-100 max-w-md w-full shadow-xl">
+          <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck size={32} className="text-red-500" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 mb-2">אין גישה</h2>
+          <p className="text-slate-600 mb-8 font-medium leading-relaxed">
+            החשבון <strong>{user.email}</strong> אינו מורשה לגשת לאפליקציה זו.
+            <br />
+            זוהי אפליקציה פרטית.
+          </p>
+          <button
+            onClick={signOut}
+            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-lg active:scale-95"
+          >
+            התנתק ונסה חשבון אחר
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-12 antialiased">
       <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
@@ -311,6 +358,10 @@ const App: React.FC = () => {
                 <RefreshCw size={20} />
               </button>
             )}
+            <div className="w-px h-8 bg-slate-200 mx-1"></div>
+            <button onClick={signOut} className="p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" title="התנתק">
+              <LogOut size={20} />
+            </button>
           </div>
         </div>
       </header>

@@ -1,13 +1,51 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe, RECIPE_CATEGORIES } from "../types";
 import { getMimeType, getBase64Data } from "./imageUtils";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini Client (ONLY used in local dev)
+const localApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = localApiKey ? new GoogleGenAI({ apiKey: localApiKey }) : null;
 
 export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe> => {
+  // ---------------------------------------------------------
+  // PATH 1: PRODUCTION (Netlify Function)
+  // ---------------------------------------------------------
+  // If we are in production OR if we don't have a local key configured, 
+  // try the serverless function.
+  if (import.meta.env.PROD || !localApiKey) {
+    try {
+      console.log("Analyzing via Serverless Function...");
+      const response = await fetch('/.netlify/functions/analyze-recipe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Optional: Add Auth token here if we implemented strict server-side auth check
+        },
+        body: JSON.stringify({ images: base64Images })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data as Recipe;
+    } catch (error) {
+      console.error("Serverless Function Error:", error);
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------
+  // PATH 2: LOCAL DEVELOPMENT (Direct Client-Side Call)
+  // ---------------------------------------------------------
+  if (!ai) {
+    throw new Error("Missing VITE_GEMINI_API_KEY for local development");
+  }
+
   const model = "gemini-3-flash-preview";
-  
+
   const systemInstruction = `
     אתה מומחה קולינרי הדובר עברית רהוטה וטבעית. תפקידך לנתח תמונות של דפי מתכונים ולהפיק מתכון מלא ומסודר בעברית הנאמן למקור ככל הניתן.
     
@@ -42,31 +80,23 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          title: { type: Type.STRING, description: "שם המתכון כפי שמופיע במקור" },
-          category: { type: Type.STRING, description: "קטגוריית המנה מתוך הרשימה המוגדרת" },
-          prepTime: { type: Type.STRING, description: "זמן הכנה (אם מופיע)" },
+          title: { type: Type.STRING, description: "שם המתכון" },
+          category: { type: Type.STRING, description: "קטגוריה" },
+          prepTime: { type: Type.STRING, description: "זמן הכנה" },
           categories: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                name: { type: Type.STRING, description: "שם רכיב המנה (למשל: לבצק, למלית)" },
-                items: { type: Type.ARRAY, items: { type: Type.STRING }, description: "רשימת מצרכים כפי שכתובים" }
+                name: { type: Type.STRING },
+                items: { type: Type.ARRAY, items: { type: Type.STRING } }
               },
               required: ["name", "items"]
             }
           },
-          steps: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "שלבי ההכנה המדויקים מהמקור"
-          },
-          tips: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "הערות וטיפים המופיעים במפורש במתכון המקורי בלבד"
-          },
-          servings: { type: Type.STRING, description: "מספר מנות (אם מופיע)" }
+          steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          tips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          servings: { type: Type.STRING }
         },
         required: ["title", "category", "prepTime", "categories", "steps"]
       }
@@ -79,6 +109,6 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
     return JSON.parse(textOutput.trim()) as Recipe;
   } catch (error) {
     console.error("Gemini Parse Error:", error);
-    throw new Error("לא הצלחנו לפענח את המתכון בצורה תקינה. וודאו שהתמונות ברורות והטקסט קריא.");
+    throw new Error("לא הצלחנו לפענח את המתכון.");
   }
 };
