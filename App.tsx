@@ -423,25 +423,25 @@ const App: React.FC = () => {
         )}
 
         {state === AppState.HISTORY && (
-          <div className="space-y-12 animate-in fade-in duration-500 pb-20">
-            <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-slate-200 pb-8">
+          <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-500 pb-20">
+            <div className="space-y-6 sm:space-y-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b border-slate-200 pb-6 sm:pb-8">
                 <div>
-                  <h2 className="text-4xl font-black text-slate-900 mb-2">הספרייה הדיגיטלית</h2>
-                  <p className="text-slate-500 font-medium">ניהול וארגון המתכונים שלך</p>
+                  <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-2">הספרייה שלך</h2>
+                  <p className="text-slate-500 font-medium text-sm sm:text-base">ניהול וארגון המתכונים שלך</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex bg-slate-200 p-1 rounded-2xl">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="flex bg-slate-200 p-1 rounded-2xl flex-1 sm:flex-none justify-center">
                     <button
                       onClick={() => setIsLibraryCompact(false)}
-                      className={`p-2 rounded-xl transition-all ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                      className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                       title="תצוגת גריד"
                     >
                       <LayoutGrid size={20} />
                     </button>
                     <button
                       onClick={() => setIsLibraryCompact(true)}
-                      className={`p-2 rounded-xl transition-all ${isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                      className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                       title="תצוגת שורות קומפקטית"
                     >
                       <List size={20} />
@@ -457,13 +457,13 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tab Navigation */}
-              <div className="flex items-center gap-4 bg-slate-100 p-1.5 rounded-[2rem] w-fit mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
+              {/* Tab Navigation - Mobile Optimized */}
+              <div className="flex items-center gap-2 sm:gap-4 bg-slate-100 p-1.5 rounded-[2rem] w-full sm:w-fit sm:mx-0 overflow-x-auto no-scrollbar scroll-smooth">
                 <button
                   onClick={() => setLibraryTab('review')}
-                  className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'review' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-slate-500 hover:bg-slate-200'}`}
+                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'review' ? 'bg-orange-600 text-white shadow-lg sm:shadow-xl shadow-orange-100' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
-                  <RefreshCw size={20} />
+                  <RefreshCw size={16} className="sm:w-5 sm:h-5" />
                   לביקורת
                   {savedRecipes.filter(r => r.status === 'unreviewed').length > 0 && (
                     <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1 animate-pulse">
@@ -473,31 +473,31 @@ const App: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setLibraryTab('favorites')}
-                  className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'favorites' ? 'bg-red-600 text-white shadow-xl shadow-red-100' : 'text-slate-500 hover:bg-slate-200'}`}
+                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'favorites' ? 'bg-red-600 text-white shadow-lg sm:shadow-xl shadow-red-100' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
-                  <Heart size={20} fill={libraryTab === 'favorites' ? 'currentColor' : 'none'} />
+                  <Heart size={16} className="sm:w-5 sm:h-5" fill={libraryTab === 'favorites' ? 'currentColor' : 'none'} />
                   מועדפים
                 </button>
                 <button
                   onClick={() => setLibraryTab('all')}
-                  className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
+                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-lg sm:shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
-                  <LayoutGrid size={20} />
-                  כל המתכונים
+                  <LayoutGrid size={16} className="sm:w-5 sm:h-5" />
+                  הכל
                 </button>
               </div>
             </div>
 
             {jobs.some(j => j.status !== 'completed') && (
-              <section className="bg-orange-50/50 p-8 rounded-[3rem] border-2 border-dashed border-orange-200 space-y-6">
+              <section className="bg-orange-50/50 p-4 sm:p-8 rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed border-orange-200 space-y-4 sm:space-y-6">
                 <div className="flex items-center gap-3 text-orange-700">
                   <Loader2 className="animate-spin" />
-                  <h3 className="text-xl font-black">מעבד מתכונים חדשים...</h3>
+                  <h3 className="text-lg sm:text-xl font-black">מעבד מתכונים חדשים...</h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {jobs.filter(j => j.status !== 'completed').map(job => (
-                    <div key={job.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
+                    <div key={job.id} className="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 sm:gap-4">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
                         <img src={job.images[0]} className="w-full h-full object-cover grayscale opacity-50" alt="" />
                       </div>
                       <div className="flex-grow">
@@ -524,10 +524,10 @@ const App: React.FC = () => {
             )}
 
             {Object.entries(groupedRecipes).length === 0 ? (
-              <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 shadow-inner">
-                <Library size={80} className="mx-auto text-slate-200 mb-6" />
-                <p className="text-slate-400 font-black text-2xl">אין מתכונים בתצוגה זו</p>
-                <button onClick={handleReset} className="mt-8 bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-lg hover:bg-black transition-all">צור מתכון חדש</button>
+              <div className="text-center py-20 sm:py-32 bg-white rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed border-slate-200 shadow-inner px-4">
+                <Library size={60} className="mx-auto text-slate-200 mb-6 sm:w-20 sm:h-20" />
+                <p className="text-slate-400 font-black text-xl sm:text-2xl">אין מתכונים בתצוגה זו</p>
+                <button onClick={handleReset} className="mt-6 sm:mt-8 bg-slate-900 text-white px-8 sm:px-10 py-3 sm:py-4 rounded-2xl font-black text-base sm:text-lg hover:bg-black transition-all w-full sm:w-auto">צור מתכון חדש</button>
               </div>
             ) : (
               (Object.entries(groupedRecipes) as [string, SavedRecipe[]][])
@@ -542,24 +542,24 @@ const App: React.FC = () => {
                     <section key={cat} className="space-y-4">
                       <div
                         onClick={() => toggleLibraryCategory(cat)}
-                        className="flex items-center gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-lg py-6 z-10 border-b border-transparent cursor-pointer group"
+                        className="flex items-center gap-3 sm:gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-lg py-4 sm:py-6 z-10 border-b border-transparent cursor-pointer group"
                       >
-                        <div className="h-10 w-2.5 bg-orange-600 rounded-full shadow-lg shadow-orange-100 group-hover:scale-y-110 transition-transform"></div>
-                        <h3 className="text-3xl font-black text-slate-800">{cat}</h3>
+                        <div className="h-8 w-2 sm:h-10 sm:w-2.5 bg-orange-600 rounded-full shadow-lg shadow-orange-100 group-hover:scale-y-110 transition-transform"></div>
+                        <h3 className="text-2xl sm:text-3xl font-black text-slate-800">{cat}</h3>
                         <div className="flex-grow h-px bg-gradient-to-l from-slate-200 to-transparent"></div>
-                        <span className="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-full text-sm font-black ring-1 ring-slate-300/20">{items.length} מתכונים</span>
-                        {isCollapsed ? <ChevronDown size={28} className="text-slate-400" /> : <ChevronUp size={28} className="text-slate-400" />}
+                        <span className="bg-slate-200 text-slate-700 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-black ring-1 ring-slate-300/20 whitespace-nowrap">{items.length} <span className="hidden sm:inline">מתכונים</span></span>
+                        {isCollapsed ? <ChevronDown size={24} className="text-slate-400 sm:w-7 sm:h-7" /> : <ChevronUp size={24} className="text-slate-400 sm:w-7 sm:h-7" />}
                       </div>
 
                       {!isCollapsed && (
-                        <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10'}`}>
+                        <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10'}`}>
                           {items.map(saved => (
                             <div
                               key={saved.id}
                               onClick={() => handleViewSaved(saved)}
                               className={`group relative bg-white border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden ${isLibraryCompact
-                                ? 'flex items-center gap-4 p-3 rounded-2xl border-slate-100'
-                                : 'flex flex-col rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
+                                ? 'flex items-center gap-3 p-3 rounded-2xl border-slate-100'
+                                : 'flex flex-col rounded-[2.5rem] sm:rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
                                 }`}
                             >
                               {/* Thumbnail/Image */}
@@ -567,17 +567,17 @@ const App: React.FC = () => {
                                 <img src={saved.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
                                 {!isLibraryCompact && (
                                   <>
-                                    <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                    <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-2">
                                       <button
                                         onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
-                                        className={`p-3 rounded-2xl shadow-xl transition-all ${saved.isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
+                                        className={`p-2.5 sm:p-3 rounded-2xl shadow-xl transition-all ${saved.isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
                                       >
-                                        <Heart size={20} fill={saved.isFavorite ? 'currentColor' : 'none'} />
+                                        <Heart size={18} className="sm:w-5 sm:h-5" fill={saved.isFavorite ? 'currentColor' : 'none'} />
                                       </button>
                                     </div>
-                                    <div className="absolute top-4 right-4">
+                                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                                       {saved.status === 'unreviewed' && (
-                                        <span className="bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                        <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
                                           <RefreshCw size={10} className="animate-spin" /> לביקורת
                                         </span>
                                       )}
@@ -587,9 +587,9 @@ const App: React.FC = () => {
                               </div>
 
                               {/* Content */}
-                              <div className={`${isLibraryCompact ? 'flex-grow min-w-0' : 'p-8 flex flex-col gap-4'}`}>
-                                <h4 className={`font-black text-slate-800 leading-tight group-hover:text-orange-600 transition-colors ${isLibraryCompact ? 'truncate text-lg' : 'line-clamp-2 text-2xl min-h-[4rem]'}`}>{saved.recipe.title}</h4>
-                                <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-sm'}`}>
+                              <div className={`${isLibraryCompact ? 'flex-grow min-w-0' : 'p-6 sm:p-8 flex flex-col gap-3 sm:gap-4'}`}>
+                                <h4 className={`font-black text-slate-800 leading-tight group-hover:text-orange-600 transition-colors ${isLibraryCompact ? 'truncate text-base sm:text-lg' : 'line-clamp-2 text-xl sm:text-2xl min-h-[3.5rem] sm:min-h-[4rem]'}`}>{saved.recipe.title}</h4>
+                                <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
                                   <div className="flex items-center gap-1.5"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
                                   {saved.systemComments && !isLibraryCompact && (
                                     <div className="flex items-center gap-1.5 text-blue-500"><MessageSquare size={16} /> הערת מערכת</div>
