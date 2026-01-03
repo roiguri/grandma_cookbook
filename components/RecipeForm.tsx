@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Save, X, Clock, Users, Tag, ChevronDown, ListChecks, Info, Lightbulb } from 'lucide-react';
-import { Recipe, RECIPE_CATEGORIES } from '../types';
+import { Plus, Trash2, Save, X, Clock, Users, Tag, ChevronDown, ListChecks, Info, Lightbulb, GripVertical } from 'lucide-react';
+import { Recipe, RECIPE_CATEGORIES, InstructionPhase } from '../types';
 
 interface RecipeFormProps {
   recipe: Recipe;
@@ -10,7 +10,16 @@ interface RecipeFormProps {
 }
 
 const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, onCancel }) => {
-  const [recipe, setRecipe] = useState<Recipe>({ ...initialRecipe });
+  const [recipe, setRecipe] = useState<Recipe>(() => {
+    // Ensure we have at least one phase
+    let steps: InstructionPhase[] = initialRecipe.steps || [];
+
+    if (steps.length === 0) {
+      steps = [{ name: 'אופן ההכנה', steps: [''] }];
+    }
+
+    return { ...initialRecipe, steps };
+  });
 
   const handleAddCategory = () => {
     setRecipe({
@@ -42,18 +51,41 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
     setRecipe({ ...recipe, categories: newCategories });
   };
 
-  const handleAddStep = () => {
-    setRecipe({ ...recipe, steps: [...recipe.steps, ''] });
+  /* Phrase & Step Handlers */
+  const handleAddPhase = () => {
+    setRecipe({
+      ...recipe,
+      steps: [...recipe.steps, { name: 'חלק חדש', steps: [''] }]
+    });
   };
 
-  const handleStepChange = (idx: number, value: string) => {
-    const newSteps = [...recipe.steps];
-    newSteps[idx] = value;
+  const handleRemovePhase = (phaseIdx: number) => {
+    if (recipe.steps.length <= 1) return; // Prevent removing the last phase
+    const newSteps = recipe.steps.filter((_, i) => i !== phaseIdx);
     setRecipe({ ...recipe, steps: newSteps });
   };
 
-  const handleRemoveStep = (idx: number) => {
-    const newSteps = recipe.steps.filter((_, i) => i !== idx);
+  const handlePhaseNameChange = (phaseIdx: number, value: string) => {
+    const newSteps = [...recipe.steps];
+    newSteps[phaseIdx].name = value;
+    setRecipe({ ...recipe, steps: newSteps });
+  };
+
+  const handleAddStep = (phaseIdx: number) => {
+    const newSteps = [...recipe.steps];
+    newSteps[phaseIdx].steps.push('');
+    setRecipe({ ...recipe, steps: newSteps });
+  };
+
+  const handleStepChange = (phaseIdx: number, stepIdx: number, value: string) => {
+    const newSteps = [...recipe.steps];
+    newSteps[phaseIdx].steps[stepIdx] = value;
+    setRecipe({ ...recipe, steps: newSteps });
+  };
+
+  const handleRemoveStep = (phaseIdx: number, stepIdx: number) => {
+    const newSteps = [...recipe.steps];
+    newSteps[phaseIdx].steps = newSteps[phaseIdx].steps.filter((_, i) => i !== stepIdx);
     setRecipe({ ...recipe, steps: newSteps });
   };
 
@@ -76,8 +108,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
     <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl border border-slate-100 p-8 sm:p-12 space-y-12 animate-in fade-in zoom-in-95 duration-500">
       <div className="flex items-center justify-between border-b border-slate-100 pb-8">
         <h2 className="text-3xl font-black text-slate-900">עריכת המתכון</h2>
-        <button 
-          onClick={onCancel} 
+        <button
+          onClick={onCancel}
           className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
         >
           <X size={28} />
@@ -89,8 +121,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
         <div className="grid grid-cols-1 gap-8">
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">שם המתכון</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={recipe.title}
               onChange={(e) => setRecipe({ ...recipe, title: e.target.value })}
               className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 focus:border-orange-500 outline-none transition-all text-2xl font-black bg-slate-50 focus:bg-white"
@@ -103,7 +135,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Tag size={12} /> קטגוריה
               </label>
-              <select 
+              <select
                 value={recipe.category}
                 onChange={(e) => setRecipe({ ...recipe, category: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none appearance-none bg-slate-50 font-bold pr-12"
@@ -117,8 +149,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Clock size={12} /> זמן הכנה
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={recipe.prepTime}
                 onChange={(e) => setRecipe({ ...recipe, prepTime: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none bg-slate-50 font-bold"
@@ -129,8 +161,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Users size={12} /> כמות מנות
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={recipe.servings || ''}
                 onChange={(e) => setRecipe({ ...recipe, servings: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none bg-slate-50 font-bold"
@@ -147,7 +179,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <div className="bg-slate-900 p-2 rounded-xl text-white"><Info size={20} /></div>
               <h3 className="text-2xl font-black text-slate-800 tracking-tight">מצרכים לפי שלבים</h3>
             </div>
-            <button 
+            <button
               onClick={handleAddCategory}
               className="flex items-center gap-2 text-orange-600 font-bold hover:bg-orange-50 px-4 py-2 rounded-xl transition-all"
             >
@@ -158,15 +190,15 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
           <div className="grid grid-cols-1 gap-8">
             {recipe.categories.map((cat, catIdx) => (
               <div key={catIdx} className="bg-slate-50 p-6 sm:p-8 rounded-[2rem] border-2 border-slate-100 relative group">
-                <button 
+                <button
                   onClick={() => handleRemoveCategory(catIdx)}
                   className="absolute top-4 left-4 p-2 text-slate-300 hover:text-red-500 transition-colors"
                   title="הסר חלק זה"
                 >
                   <Trash2 size={20} />
                 </button>
-                
-                <input 
+
+                <input
                   type="text"
                   value={cat.name}
                   onChange={(e) => {
@@ -181,14 +213,14 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
                   {cat.items.map((item, itemIdx) => (
                     <div key={itemIdx} className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full bg-orange-300 flex-shrink-0"></div>
-                      <input 
+                      <input
                         type="text"
                         value={item}
                         onChange={(e) => handleIngredientChange(catIdx, itemIdx, e.target.value)}
                         className="flex-grow bg-white px-4 py-2 rounded-xl border border-slate-200 focus:border-orange-400 outline-none font-bold text-slate-700"
                         placeholder="כמות ומצרך..."
                       />
-                      <button 
+                      <button
                         onClick={() => handleRemoveIngredient(catIdx, itemIdx)}
                         className="p-2 text-slate-300 hover:text-red-500"
                       >
@@ -196,7 +228,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
                       </button>
                     </div>
                   ))}
-                  <button 
+                  <button
                     onClick={() => handleAddIngredient(catIdx)}
                     className="flex items-center gap-2 text-slate-400 hover:text-orange-600 font-bold text-sm mt-4 mr-5 transition-colors"
                   >
@@ -209,39 +241,73 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
         </section>
 
         {/* Preparation Steps */}
+        {/* Preparation Steps by Phases */}
         <section className="space-y-8">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-3">
               <div className="bg-slate-900 p-2 rounded-xl text-white"><ListChecks size={20} /></div>
               <h3 className="text-2xl font-black text-slate-800 tracking-tight">אופן ההכנה</h3>
             </div>
-            <button 
-              onClick={handleAddStep}
-              className="flex items-center gap-2 text-orange-600 font-bold hover:bg-orange-50 px-4 py-2 rounded-xl transition-all"
+            <button
+              onClick={handleAddPhase}
+              className="flex items-center gap-2 text-slate-500 font-bold hover:bg-slate-50 px-4 py-2 rounded-xl transition-all border border-slate-200"
             >
-              <Plus size={18} /> הוסף שלב
+              <Plus size={18} /> הוסף חלק (למשל: לקרם)
             </button>
           </div>
 
-          <div className="space-y-4">
-            {recipe.steps.map((step, idx) => (
-              <div key={idx} className="flex gap-4 group items-start">
-                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center font-black text-lg">
-                  {idx + 1}
-                </div>
-                <div className="flex-grow">
-                  <textarea 
-                    value={step}
-                    onChange={(e) => handleStepChange(idx, e.target.value)}
-                    className="w-full bg-white px-6 py-4 rounded-2xl border border-slate-200 focus:border-orange-400 outline-none font-bold text-slate-700 min-h-[80px]"
-                    placeholder={`שלב ${idx + 1}...`}
+          <div className="space-y-10">
+            {recipe.steps.map((phase, phaseIdx) => (
+              <div key={phaseIdx} className="bg-slate-50 p-6 sm:p-8 rounded-[2rem] border-2 border-slate-100 relative group">
+                {/* Phase Header */}
+                <div className="flex items-center gap-4 mb-6">
+                  <input
+                    type="text"
+                    value={phase.name}
+                    onChange={(e) => handlePhaseNameChange(phaseIdx, e.target.value)}
+                    className="bg-transparent border-b-2 border-slate-200 focus:border-orange-500 outline-none text-xl font-black text-orange-700 px-1 py-1 w-full sm:w-auto flex-grow"
+                    placeholder="שם החלק..."
                   />
+                  {recipe.steps.length > 1 && (
+                    <button
+                      onClick={() => handleRemovePhase(phaseIdx)}
+                      className="p-2 text-slate-300 hover:text-red-500 transition-colors bg-white rounded-xl shadow-sm border border-slate-100"
+                      title="הסר חלק זה"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
                 </div>
-                <button 
-                  onClick={() => handleRemoveStep(idx)}
-                  className="mt-3 p-2 text-slate-300 hover:text-red-500 transition-colors"
+
+                <div className="space-y-4">
+                  {phase.steps.map((step, stepIdx) => (
+                    <div key={stepIdx} className="flex gap-4 group items-start">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-400 flex items-center justify-center font-black text-lg">
+                        {stepIdx + 1}
+                      </div>
+                      <div className="flex-grow">
+                        <textarea
+                          value={step}
+                          onChange={(e) => handleStepChange(phaseIdx, stepIdx, e.target.value)}
+                          className="w-full bg-white px-6 py-4 rounded-2xl border border-slate-200 focus:border-orange-400 outline-none font-bold text-slate-700 min-h-[80px]"
+                          placeholder={`שלב ${stepIdx + 1}...`}
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleRemoveStep(phaseIdx, stepIdx)}
+                        className="mt-3 p-2 text-slate-300 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handleAddStep(phaseIdx)}
+                  className="flex items-center gap-2 text-orange-600 font-bold hover:bg-orange-100/50 px-4 py-2 rounded-xl transition-all mt-4 w-full justify-center border-2 border-dashed border-orange-200 hover:border-orange-300"
                 >
-                  <Trash2 size={20} />
+                  <Plus size={18} /> הוסף שלב ל{phase.name}
                 </button>
               </div>
             ))}
@@ -255,7 +321,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <div className="bg-amber-500 p-2 rounded-xl text-white"><Lightbulb size={20} /></div>
               <h3 className="text-2xl font-black text-slate-800 tracking-tight">טיפים והערות</h3>
             </div>
-            <button 
+            <button
               onClick={handleAddTip}
               className="flex items-center gap-2 text-amber-600 font-bold hover:bg-amber-50 px-4 py-2 rounded-xl transition-all"
             >
@@ -270,7 +336,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
                   <Lightbulb size={18} />
                 </div>
                 <div className="flex-grow">
-                  <input 
+                  <input
                     type="text"
                     value={tip}
                     onChange={(e) => handleTipChange(idx, e.target.value)}
@@ -278,7 +344,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
                     placeholder="טיפ או הערה..."
                   />
                 </div>
-                <button 
+                <button
                   onClick={() => handleRemoveTip(idx)}
                   className="mt-2 p-2 text-slate-300 hover:text-red-500 transition-colors"
                 >
@@ -291,13 +357,13 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
 
         {/* Footer Actions */}
         <div className="pt-10 flex flex-col sm:flex-row gap-4">
-          <button 
+          <button
             onClick={() => onSave(recipe)}
             className="flex-grow flex items-center justify-center gap-3 bg-orange-600 text-white py-5 rounded-3xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all active:scale-95"
           >
             <Save size={24} /> שמור שינויים
           </button>
-          <button 
+          <button
             onClick={onCancel}
             className="px-10 py-5 rounded-3xl border-2 border-slate-100 text-slate-500 font-black hover:bg-slate-50 transition-all"
           >

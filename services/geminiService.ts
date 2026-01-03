@@ -53,8 +53,9 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
     1. סיווג המתכון: בחר קטגוריה מתאימה מהרשימה: ${RECIPE_CATEGORIES.join(', ')}.
     2. חלוקת מצרכים: חלק את המצרכים לפי מרכיבי המנה (למשל: "לבצק", "למילוי", "לרוטב") כפי שמופיע או משתמע מהטקסט המקורי.
     3. נאמנות למקור (Strict Fidelity): אל תמציא שלבים, מרכיבים או טיפים שאינם מופיעים בתמונה. היצמד לתוכן המוצג במדויק.
-    4. הערות וטיפים: השתמש בשדה ה-tips אך ורק עבור הערות שוליים, טיפים של המחבר, או הערות מיוחדות המופיעות במפורש בטקסט המצולם. **אל תציע טיפים משלך** או המלצות שאינן מופיעות במתכון המקורי.
-    5. מבנה: החזר JSON מדויק לפי הסכימה.
+    4. חלוקה לשלבים (Instruction Phases): אם המתכון מורכב מחלקים ברורים (למשל: "הכנת הבצק", "הכנת המילוי"), חלק גם את אופן ההכנה לחלקים אלו. אם המתכון פשוט, השתמש בחלק אחד בשם "אופן ההכנה". אל תמציא חלוקה אם אינה קיימת.
+    5. הערות וטיפים: השתמש בשדה ה-tips אך ורק עבור הערות שוליים, טיפים של המחבר, או הערות מיוחדות המופיעות במפורש בטקסט המצולם. **אל תציע טיפים משלך** או המלצות שאינן מופיעות במתכון המקורי.
+    6. מבנה: החזר JSON מדויק לפי הסכימה.
   `;
 
   const imageParts = base64Images.map(imgStr => ({
@@ -94,7 +95,17 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
               required: ["name", "items"]
             }
           },
-          steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          steps: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING, description: "שם החלק" },
+                steps: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["name", "steps"]
+            }
+          },
           tips: { type: Type.ARRAY, items: { type: Type.STRING } },
           servings: { type: Type.STRING }
         },

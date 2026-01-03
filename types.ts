@@ -6,12 +6,17 @@ export interface IngredientCategory {
 
 export interface Recipe {
   title: string;
-  category: string; 
+  category: string;
   prepTime: string;
-  categories: IngredientCategory[]; 
-  steps: string[];
+  categories: IngredientCategory[];
+  steps: InstructionPhase[];
   tips?: string[];
   servings?: string;
+}
+
+export interface InstructionPhase {
+  name: string;
+  steps: string[];
 }
 
 export type ReviewStatus = 'unreviewed' | 'reviewed';
