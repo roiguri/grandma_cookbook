@@ -1,8 +1,8 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { 
-  ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed, 
-  BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X, 
+import {
+  ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
+  BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
   ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck
 } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Recipe, AppState, SavedRecipe, RECIPE_CATEGORIES, AnalysisJob, ReviewSt
 import RecipeDisplay from './components/RecipeDisplay';
 import RecipeForm from './components/RecipeForm';
 import ImageUploader from './components/ImageUploader';
+import { dbService } from './services/dbService';
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
 
@@ -24,46 +25,32 @@ const App: React.FC = () => {
   const [recipeImages, setRecipeImages] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  
+
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('all');
-  
+
   // Jobs state for background processing
   const [jobs, setJobs] = useState<AnalysisJob[]>([]);
-  const [notifications, setNotifications] = useState<{id: string, message: string, type: 'success' | 'info'}[]>([]);
+  const [notifications, setNotifications] = useState<{ id: string, message: string, type: 'success' | 'info' }[]>([]);
 
   // Library view options
   const [isLibraryCompact, setIsLibraryCompact] = useState(false);
   const [collapsedLibraryCats, setCollapsedLibraryCats] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Migration: Ensure all recipes have status and isFavorite
-        const migrated = parsed.map((r: any) => ({
-          ...r,
-          status: r.status || 'reviewed', // Assume old ones are reviewed
-          isFavorite: r.isFavorite || false
-        }));
-        setSavedRecipes(migrated);
-      } catch (e) {
-        console.error("Failed to load saved recipes", e);
-      }
-    }
+    // Subscribe to Firestore updates
+    const unsubscribe = dbService.subscribeToRecipes((recipes) => {
+      setSavedRecipes(recipes);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const persistRecipes = (recipes: SavedRecipe[]) => {
-    setSavedRecipes(recipes);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
-  };
-
-  const activeSavedRecipe = useMemo(() => 
-    savedRecipes.find(r => r.id === activeSavedId), 
+  const activeSavedRecipe = useMemo(() =>
+    savedRecipes.find(r => r.id === activeSavedId),
     [savedRecipes, activeSavedId]
   );
 
@@ -109,7 +96,7 @@ const App: React.FC = () => {
 
   const handleImagesSelect = useCallback(async (base64Array: string[]) => {
     if (base64Array.length === 0) return;
-    
+
     const jobId = Date.now().toString();
     const newJob: AnalysisJob = {
       id: jobId,
@@ -120,32 +107,29 @@ const App: React.FC = () => {
 
     setJobs(prev => [newJob, ...prev]);
     addNotification("מתחיל בפענוח המתכון ברקע...", "info");
-    
+
     setState(AppState.IDLE);
 
     try {
       const compressedImages = await Promise.all(
         base64Array.map(img => compressImage(img, 1200, 1200))
       );
-      
+
       const result = await analyzeRecipeImage(compressedImages);
-      
+
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'completed', recipe: result, images: compressedImages } : j));
-      
+
       const newSavedRecipe: SavedRecipe = {
         id: jobId,
         date: Date.now(),
         recipe: result,
-        images: compressedImages,
-        status: 'unreviewed', // New recipes start as unreviewed
+        images: [], // Will be filled by dbService on save
+        status: 'unreviewed',
         isFavorite: false
       };
-      
-      setSavedRecipes(prev => {
-        const updated = [newSavedRecipe, ...prev];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        return updated;
-      });
+
+      // Auto-save to DB
+      await dbService.saveRecipe(newSavedRecipe, compressedImages);
 
       addNotification(`המתכון "${result.title}" פוענח ונשמר לביקורת בספרייה!`, "success");
     } catch (err: any) {
@@ -155,43 +139,52 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const updateManagementField = (id: string, updates: Partial<SavedRecipe>) => {
-    const newList = savedRecipes.map(r => r.id === id ? { ...r, ...updates } : r);
-    persistRecipes(newList);
+  const updateManagementField = async (id: string, updates: Partial<SavedRecipe>) => {
+    // Optimistic update (optional, but good for UI responsiveness)
+    // Actually we can rely on real-time subscription for simplicity unless latency is an issue
+    await dbService.updateRecipe(id, updates);
   };
 
-  const handleSaveToLibrary = () => {
+  const handleSaveToLibrary = async () => {
     if (!recipe || recipeImages.length === 0) return;
-    
-    if (activeSavedId) {
-      const updatedLibrary = savedRecipes.map(r => 
-        r.id === activeSavedId ? { ...r, recipe: recipe } : r
-      );
-      persistRecipes(updatedLibrary);
-    } else {
-      const newSavedRecipe: SavedRecipe = {
-        id: Date.now().toString(),
-        date: Date.now(),
+    setIsSaving(true);
+
+    try {
+      const recipeToSave: SavedRecipe = {
+        id: activeSavedId || Date.now().toString(),
+        date: activeSavedRecipe?.date || Date.now(),
         recipe: recipe,
-        images: recipeImages,
-        status: 'reviewed',
-        isFavorite: false
+        images: [], // Handled by service
+        status: activeSavedRecipe?.status || 'reviewed',
+        isFavorite: activeSavedRecipe?.isFavorite || false,
+        systemComments: activeSavedRecipe?.systemComments
       };
-      persistRecipes([newSavedRecipe, ...savedRecipes]);
-      setActiveSavedId(newSavedRecipe.id);
+
+      await dbService.saveRecipe(recipeToSave, recipeImages);
+
+      if (!activeSavedId) {
+        setActiveSavedId(recipeToSave.id);
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      console.error("Failed to save", e);
+      addNotification("שגיאה בשמירה", "info");
+    } finally {
+      setIsSaving(false);
     }
-    
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handleDeleteSaved = (id: string, e: React.MouseEvent) => {
+  const handleDeleteSaved = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     if (confirmDeleteId === id) {
-      const newList = savedRecipes.filter(r => r.id !== id);
-      persistRecipes(newList);
+      const recipeToDelete = savedRecipes.find(r => r.id === id);
+      if (recipeToDelete) {
+        await dbService.deleteRecipe(id, recipeToDelete.images);
+      }
       setConfirmDeleteId(null);
       if (activeSavedId === id) {
         handleReset();
@@ -210,18 +203,17 @@ const App: React.FC = () => {
   };
 
   const handleEdit = () => setState(AppState.EDITING);
-  
+
   const handleSaveEdit = (updatedRecipe: Recipe) => {
     setRecipe(updatedRecipe);
+    // If we are editing an existing one, auto-save to DB
     if (activeSavedId) {
-      const updatedLibrary = savedRecipes.map(r => 
-        r.id === activeSavedId ? { ...r, recipe: updatedRecipe } : r
-      );
-      persistRecipes(updatedLibrary);
+      dbService.updateRecipe(activeSavedId, { recipe: updatedRecipe });
+      addNotification("השינויים נשמרו", "success");
     }
     setState(AppState.VIEWING);
   };
-  
+
   const handleReset = () => {
     setState(AppState.IDLE);
     setRecipe(null);
@@ -275,6 +267,7 @@ const App: React.FC = () => {
 
   const exportAllAsJson = () => {
     if (savedRecipes.length === 0) return;
+    // savedRecipes now contains URLs, so the JSON will be small
     const dataStr = JSON.stringify(savedRecipes, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -285,7 +278,7 @@ const App: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    addNotification("גיבוי JSON הורד בהצלחה", "success");
+    addNotification("גיבוי JSON הורד בהצלחה (קישורים לענן)", "success");
   };
 
   return (
@@ -293,12 +286,12 @@ const App: React.FC = () => {
       <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105 active:scale-95" onClick={handleReset}>
-            <div className="bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200"><ChefHat size={22} /></div>
+            <div className={`bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200 ${isSaving ? 'animate-pulse' : ''}`}><ChefHat size={22} /></div>
             <h1 className="text-xl font-black text-slate-800 tracking-tight">Recipe Genie</h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <button 
-              onClick={() => setState(AppState.HISTORY)} 
+            <button
+              onClick={() => setState(AppState.HISTORY)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all relative ${state === AppState.HISTORY ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-100'}`}
               title="ספריית מתכונים"
             >
@@ -343,7 +336,7 @@ const App: React.FC = () => {
               צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.
             </p>
             <ImageUploader onImagesSelected={handleImagesSelect} />
-            
+
             {savedRecipes.length > 0 && (
               <div className="mt-24 text-right animate-in fade-in slide-in-from-bottom-12 duration-1000">
                 <div className="flex items-center justify-between mb-10 border-b border-slate-200 pb-4">
@@ -352,15 +345,15 @@ const App: React.FC = () => {
                     <h3 className="text-2xl font-black text-slate-800">הצצה לספרייה שלך</h3>
                   </div>
                   <button onClick={() => setState(AppState.HISTORY)} className="text-orange-600 font-black flex items-center gap-2 group">
-                    כל המתכונים 
+                    כל המתכונים
                     <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
                   {savedRecipes.slice(0, 5).map(saved => (
-                    <div 
-                      key={saved.id} 
-                      onClick={() => handleViewSaved(saved)} 
+                    <div
+                      key={saved.id}
+                      onClick={() => handleViewSaved(saved)}
                       className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
                     >
                       <div className="aspect-square rounded-[2rem] overflow-hidden mb-4 bg-slate-100 ring-1 ring-slate-100">
@@ -388,14 +381,14 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex bg-slate-200 p-1 rounded-2xl">
-                    <button 
+                    <button
                       onClick={() => setIsLibraryCompact(false)}
                       className={`p-2 rounded-xl transition-all ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                       title="תצוגת גריד"
                     >
                       <LayoutGrid size={20} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => setIsLibraryCompact(true)}
                       className={`p-2 rounded-xl transition-all ${isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                       title="תצוגת שורות קומפקטית"
@@ -403,7 +396,7 @@ const App: React.FC = () => {
                       <List size={20} />
                     </button>
                   </div>
-                  <button 
+                  <button
                     onClick={exportAllAsJson}
                     className="bg-white text-orange-600 border-2 border-orange-100 hover:border-orange-500 p-3 rounded-2xl font-black transition-all shadow-sm hover:shadow-md active:scale-95"
                     title="ייצא גיבוי JSON"
@@ -415,7 +408,7 @@ const App: React.FC = () => {
 
               {/* Tab Navigation */}
               <div className="flex items-center gap-4 bg-slate-100 p-1.5 rounded-[2rem] w-fit mx-auto sm:mx-0 overflow-x-auto no-scrollbar">
-                <button 
+                <button
                   onClick={() => setLibraryTab('review')}
                   className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'review' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
@@ -427,14 +420,14 @@ const App: React.FC = () => {
                     </span>
                   )}
                 </button>
-                <button 
+                <button
                   onClick={() => setLibraryTab('favorites')}
                   className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'favorites' ? 'bg-red-600 text-white shadow-xl shadow-red-100' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
                   <Heart size={20} fill={libraryTab === 'favorites' ? 'currentColor' : 'none'} />
                   מועדפים
                 </button>
-                <button 
+                <button
                   onClick={() => setLibraryTab('all')}
                   className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] font-black transition-all whitespace-nowrap ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
@@ -459,10 +452,10 @@ const App: React.FC = () => {
                       <div className="flex-grow">
                         {job.status === 'processing' ? (
                           <div className="space-y-2">
-                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-orange-500 w-1/2 animate-[shimmer_2s_infinite]"></div>
-                             </div>
-                             <p className="text-xs font-bold text-slate-400">מפענח טקסט ותמונות...</p>
+                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-orange-500 w-1/2 animate-[shimmer_2s_infinite]"></div>
+                            </div>
+                            <p className="text-xs font-bold text-slate-400">מפענח טקסט ותמונות...</p>
                           </div>
                         ) : (
                           <div className="flex items-center justify-between">
@@ -478,7 +471,7 @@ const App: React.FC = () => {
                 </div>
               </section>
             )}
-            
+
             {Object.entries(groupedRecipes).length === 0 ? (
               <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 shadow-inner">
                 <Library size={80} className="mx-auto text-slate-200 mb-6" />
@@ -487,7 +480,7 @@ const App: React.FC = () => {
               </div>
             ) : (
               (Object.entries(groupedRecipes) as [string, SavedRecipe[]][])
-                .sort((a,b) => {
+                .sort((a, b) => {
                   const idxA = RECIPE_CATEGORIES.indexOf(a[0]);
                   const idxB = RECIPE_CATEGORIES.indexOf(b[0]);
                   return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
@@ -496,7 +489,7 @@ const App: React.FC = () => {
                   const isCollapsed = collapsedLibraryCats.has(cat);
                   return (
                     <section key={cat} className="space-y-4">
-                      <div 
+                      <div
                         onClick={() => toggleLibraryCategory(cat)}
                         className="flex items-center gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-lg py-6 z-10 border-b border-transparent cursor-pointer group"
                       >
@@ -506,18 +499,17 @@ const App: React.FC = () => {
                         <span className="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-full text-sm font-black ring-1 ring-slate-300/20">{items.length} מתכונים</span>
                         {isCollapsed ? <ChevronDown size={28} className="text-slate-400" /> : <ChevronUp size={28} className="text-slate-400" />}
                       </div>
-                      
+
                       {!isCollapsed && (
                         <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10'}`}>
                           {items.map(saved => (
-                            <div 
+                            <div
                               key={saved.id}
                               onClick={() => handleViewSaved(saved)}
-                              className={`group relative bg-white border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden ${
-                                isLibraryCompact 
-                                  ? 'flex items-center gap-4 p-3 rounded-2xl border-slate-100' 
-                                  : 'flex flex-col rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
-                              }`}
+                              className={`group relative bg-white border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden ${isLibraryCompact
+                                ? 'flex items-center gap-4 p-3 rounded-2xl border-slate-100'
+                                : 'flex flex-col rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
+                                }`}
                             >
                               {/* Thumbnail/Image */}
                               <div className={`${isLibraryCompact ? 'w-14 h-14 rounded-xl' : 'aspect-[16/10]'} overflow-hidden bg-slate-100 relative`}>
@@ -525,7 +517,7 @@ const App: React.FC = () => {
                                 {!isLibraryCompact && (
                                   <>
                                     <div className="absolute top-4 left-4 flex flex-col gap-2">
-                                      <button 
+                                      <button
                                         onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
                                         className={`p-3 rounded-2xl shadow-xl transition-all ${saved.isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
                                       >
@@ -557,14 +549,14 @@ const App: React.FC = () => {
                               {/* Actions (Compact or Hover) */}
                               <div className={`flex items-center gap-2 ${isLibraryCompact ? '' : 'absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
                                 {isLibraryCompact && (
-                                  <button 
+                                  <button
                                     onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
                                     className={`p-3 rounded-xl ${saved.isFavorite ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}
                                   >
                                     <Heart size={18} fill={saved.isFavorite ? 'currentColor' : 'none'} />
                                   </button>
                                 )}
-                                <button 
+                                <button
                                   onClick={(e) => handleDeleteSaved(saved.id, e)}
                                   className={`p-3 rounded-xl transition-all ${confirmDeleteId === saved.id ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
                                 >
@@ -591,7 +583,7 @@ const App: React.FC = () => {
                   <ZoomIn className="text-white" size={60} />
                 </div>
               </div>
-              
+
               {/* Management Controls */}
               {activeSavedId && activeSavedRecipe && (
                 <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
@@ -599,23 +591,23 @@ const App: React.FC = () => {
                     <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                       <ShieldCheck size={16} /> ניהול מתכון
                     </h4>
-                    <button 
+                    <button
                       onClick={() => updateManagementField(activeSavedId, { isFavorite: !activeSavedRecipe.isFavorite })}
                       className={`p-2 rounded-xl transition-all ${activeSavedRecipe.isFavorite ? 'text-red-500 bg-red-50' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
                     >
                       <Heart size={24} fill={activeSavedRecipe.isFavorite ? 'currentColor' : 'none'} />
                     </button>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-                      <button 
+                      <button
                         onClick={() => updateManagementField(activeSavedId, { status: 'unreviewed' })}
                         className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'unreviewed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
                       >
                         <RefreshCw size={14} className={activeSavedRecipe.status === 'unreviewed' ? 'animate-spin' : ''} /> לביקורת
                       </button>
-                      <button 
+                      <button
                         onClick={() => updateManagementField(activeSavedId, { status: 'reviewed' })}
                         className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'reviewed' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
                       >
@@ -624,13 +616,13 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                       <label className="text-xs font-black text-slate-400 uppercase px-1">הערות ניהול מערכת</label>
-                       <textarea 
-                         value={activeSavedRecipe.systemComments || ''}
-                         onChange={(e) => updateManagementField(activeSavedId, { systemComments: e.target.value })}
-                         className="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 focus:border-blue-300 outline-none font-bold text-slate-700 text-sm min-h-[80px]"
-                         placeholder="כתוב כאן הערות לעצמך על המתכון..."
-                       />
+                      <label className="text-xs font-black text-slate-400 uppercase px-1">הערות ניהול מערכת</label>
+                      <textarea
+                        value={activeSavedRecipe.systemComments || ''}
+                        onChange={(e) => updateManagementField(activeSavedId, { systemComments: e.target.value })}
+                        className="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 focus:border-blue-300 outline-none font-bold text-slate-700 text-sm min-h-[80px]"
+                        placeholder="כתוב כאן הערות לעצמך על המתכון..."
+                      />
                     </div>
                   </div>
                 </div>
@@ -639,9 +631,9 @@ const App: React.FC = () => {
               {recipeImages.length > 1 && (
                 <div className="flex gap-4 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
                   {recipeImages.map((img, idx) => (
-                    <div 
-                      key={idx} 
-                      onClick={() => setFullscreenImageIndex(idx)} 
+                    <div
+                      key={idx}
+                      onClick={() => setFullscreenImageIndex(idx)}
                       className={`flex-shrink-0 w-24 h-24 rounded-3xl overflow-hidden border-4 cursor-zoom-in transition-all hover:scale-110 shadow-xl ring-1 ring-slate-100 ${idx === 0 ? 'border-orange-500' : 'border-white'}`}
                     >
                       <img src={img} className="w-full h-full object-cover" alt="" />
@@ -651,29 +643,29 @@ const App: React.FC = () => {
               )}
 
               <div className="flex flex-col gap-4">
-                <button 
-                  onClick={handleSaveToLibrary} 
+                <button
+                  onClick={handleSaveToLibrary}
                   className="w-full flex items-center justify-center gap-3 bg-orange-600 text-white py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 group"
                 >
-                  <Save size={28} className="group-hover:rotate-12 transition-transform" /> 
+                  <Save size={28} className="group-hover:rotate-12 transition-transform" />
                   {activeSavedId ? 'עדכן שמירה' : 'שמור לספרייה'}
                 </button>
                 <div className="grid grid-cols-2 gap-4">
-                   <button onClick={copyForDocs} className="flex items-center justify-center gap-3 bg-indigo-600 text-white py-5 rounded-3xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 text-xs">
-                     <Copy size={18} /> העתק Docs
-                   </button>
-                   <button onClick={downloadHtml} className="flex items-center justify-center gap-3 bg-white text-slate-800 border-2 border-slate-100 py-5 rounded-3xl font-black shadow-sm hover:bg-slate-50 transition-all active:scale-95 text-xs">
-                     <FileText size={18} className="text-orange-600" /> הורד HTML
-                   </button>
+                  <button onClick={copyForDocs} className="flex items-center justify-center gap-3 bg-indigo-600 text-white py-5 rounded-3xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 text-xs">
+                    <Copy size={18} /> העתק Docs
+                  </button>
+                  <button onClick={downloadHtml} className="flex items-center justify-center gap-3 bg-white text-slate-800 border-2 border-slate-100 py-5 rounded-3xl font-black shadow-sm hover:bg-slate-50 transition-all active:scale-95 text-xs">
+                    <FileText size={18} className="text-orange-600" /> הורד HTML
+                  </button>
                 </div>
               </div>
             </div>
             <div className="flex-grow">
               {state === AppState.EDITING ? (
-                <RecipeForm 
-                  recipe={recipe} 
-                  onSave={handleSaveEdit} 
-                  onCancel={() => setState(AppState.VIEWING)} 
+                <RecipeForm
+                  recipe={recipe}
+                  onSave={handleSaveEdit}
+                  onCancel={() => setState(AppState.VIEWING)}
                 />
               ) : (
                 <RecipeDisplay recipe={recipe} />
@@ -691,25 +683,25 @@ const App: React.FC = () => {
           <div className="relative max-w-6xl w-full h-full flex items-center justify-center p-4 sm:p-12">
             {recipeImages.length > 1 && (
               <>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex - 1 + recipeImages.length) % recipeImages.length); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex - 1 + recipeImages.length) % recipeImages.length); }}
                   className="absolute right-0 sm:right-4 top-1/2 -translate-y-1/2 p-6 bg-white/5 text-white/60 rounded-full hover:bg-white/20 hover:text-white transition-all hidden xl:block z-10"
                 >
                   <ChevronRight size={50} />
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex + 1) % recipeImages.length); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex + 1) % recipeImages.length); }}
                   className="absolute left-0 sm:left-4 top-1/2 -translate-y-1/2 p-6 bg-white/5 text-white/60 rounded-full hover:bg-white/20 hover:text-white transition-all hidden xl:block z-10"
                 >
                   <ChevronLeft size={50} />
                 </button>
               </>
             )}
-            <img 
-              src={recipeImages[fullscreenImageIndex]} 
-              className="max-w-full max-h-full object-contain shadow-[0_0_150px_rgba(0,0,0,0.8)] rounded-3xl ring-4 ring-white/5" 
-              alt="" 
-              onClick={(e) => e.stopPropagation()} 
+            <img
+              src={recipeImages[fullscreenImageIndex]}
+              className="max-w-full max-h-full object-contain shadow-[0_0_150px_rgba(0,0,0,0.8)] rounded-3xl ring-4 ring-white/5"
+              alt=""
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
