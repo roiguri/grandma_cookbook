@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { Cropper, CropperRef } from 'react-advanced-cropper';
 import { Check, X, RotateCw } from 'lucide-react';
-import Cropper, { ReactCropperElement } from 'react-cropper';
-import 'cropperjs/dist/cropper.css';
+import 'react-advanced-cropper/dist/style.css';
 
 interface ImageCropperProps {
   imageSrc: string;
@@ -10,46 +10,53 @@ interface ImageCropperProps {
 }
 
 const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCropComplete, onCancel }) => {
-  const cropperRef = useRef<ReactCropperElement>(null);
+  const cropperRef = useRef<CropperRef>(null);
 
-  const handleSave = () => {
-    const cropper = cropperRef.current?.cropper;
-    if (cropper) {
-      // Get cropped canvas
-      const canvas = cropper.getCroppedCanvas();
-      if (canvas) {
-        // Convert to base64
-        const croppedImage = canvas.toDataURL('image/jpeg', 0.9); // High quality
-        onCropComplete(croppedImage);
-      }
-    } else {
-      // Fallback
-      onCropComplete(imageSrc);
+  const handleRotate = () => {
+    if (cropperRef.current) {
+      cropperRef.current.rotateImage(90);
+      cropperRef.current.setCoordinates((state) => {
+        const { imageSize } = state;
+        return {
+          width: imageSize.width,
+          height: imageSize.height,
+          left: 0,
+          top: 0
+        };
+      });
     }
   };
 
-  const handleRotate = () => {
-    const cropper = cropperRef.current?.cropper;
-    if (cropper) {
-      cropper.rotate(90);
+  const handleSave = () => {
+    if (cropperRef.current) {
+      const canvas = cropperRef.current.getCanvas();
+      if (canvas) {
+        // High quality logic
+        const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
+        onCropComplete(croppedImage);
+      } else {
+        // Fallback if canvas is not ready (unlikely on user click)
+        onCropComplete(imageSrc);
+      }
     }
   };
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
-      <div className="relative flex-grow w-full bg-black flex items-center justify-center overflow-hidden">
+      <div className="relative flex-grow w-full bg-black overflow-hidden flex items-center justify-center">
         <Cropper
-          src={imageSrc}
-          style={{ height: '100%', width: '100%' }}
-          initialAspectRatio={undefined} // Free aspect ratio
-          guides={true} // Show grid guides
-          viewMode={1} // Restrict crop box to canvas
-          dragMode="move" // Move image by default, crop by dragging corners
-          rotatable={true}
           ref={cropperRef}
-          background={false}
-          autoCropArea={1} // Start with 100% of image cropped
-          responsive={true}
+          src={imageSrc}
+          className={'h-full w-full object-contain'}
+          stencilProps={{
+            resizable: true,
+            movable: true,
+            previewClassName: "border-2 border-white",
+            lines: true,
+            handlers: true
+          }}
+          defaultSize={({ imageSize }) => imageSize}
+          imageRestriction="fitArea" // Fit image to container, prevents zooming out smaller than container
         />
       </div>
 
