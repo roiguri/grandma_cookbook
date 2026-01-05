@@ -458,11 +458,7 @@ const App: React.FC = () => {
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
               )}
             </button>
-            {state === AppState.VIEWING && (
-              <button onClick={handleEdit} className="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors" title="ערוך מתכון">
-                <Edit2 size={20} />
-              </button>
-            )}
+
             {state !== AppState.IDLE && (
               <button onClick={handleReset} className="p-2.5 rounded-xl text-orange-600 hover:bg-orange-100 transition-colors" title="מתכון חדש">
                 <Plus size={20} />
@@ -775,6 +771,17 @@ const App: React.FC = () => {
                   >
                     <Save size={28} className="group-hover:rotate-12 transition-transform" />
                     שמור לספרייה
+                  </button>
+                )}
+
+
+                {state === AppState.VIEWING && activeSavedId && (
+                  <button
+                    onClick={handleEdit}
+                    className="w-full flex items-center justify-center gap-2 text-slate-600 border-2 border-slate-200 hover:bg-slate-50 py-4 rounded-3xl font-bold transition-all text-lg"
+                  >
+                    <Edit2 size={20} />
+                    ערוך מתכון
                   </button>
                 )}
 
