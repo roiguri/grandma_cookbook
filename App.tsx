@@ -727,11 +727,11 @@ const App: React.FC = () => {
       </main>
 
       {fullscreenImageIndex !== null && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/98 flex flex-col items-center justify-center p-4 animate-in fade-in duration-500" onClick={() => setFullscreenImageIndex(null)}>
-          <button className="absolute top-8 right-8 text-white/40 p-5 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-[2rem] active:scale-90">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md sm:bg-slate-950/98 sm:backdrop-blur-none flex flex-col items-center justify-center animate-in fade-in duration-500" onClick={() => setFullscreenImageIndex(null)}>
+          <button className="absolute top-8 right-8 text-white/40 p-5 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-[2rem] active:scale-90 z-50">
             <X size={40} />
           </button>
-          <div className="relative max-w-6xl w-full h-full flex items-center justify-center p-4 sm:p-12">
+          <div className="relative w-full h-full flex items-center justify-center">
             {recipeImages.length > 1 && (
               <>
                 <button
