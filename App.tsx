@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
-import { Recipe, AppState, SavedRecipe, RECIPE_CATEGORIES, AnalysisJob, ReviewStatus } from './types';
+import { Recipe, AppState, SavedRecipe, RECIPE_CATEGORIES, AnalysisJob, ReviewStatus, InstructionPhase } from './types';
 import RecipeDisplay from './components/RecipeDisplay';
 import RecipeForm from './components/RecipeForm';
 import ImageUploader from './components/ImageUploader';
@@ -29,6 +29,7 @@ const App: React.FC = () => {
 
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [originalRecipe, setOriginalRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recipeImages, setRecipeImages] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -228,7 +229,25 @@ const App: React.FC = () => {
     setState(AppState.VIEWING);
   };
 
-  const handleEdit = () => setState(AppState.EDITING);
+  const handleEdit = () => {
+    // Backup current recipe state
+    setOriginalRecipe(recipe ? JSON.parse(JSON.stringify(recipe)) : null);
+
+    // Ensure we have at least one phase (logic moved from controlled RecipeForm)
+    if (recipe && (!recipe.steps || recipe.steps.length === 0)) {
+      const defaultSteps: InstructionPhase[] = [{ name: 'אופן ההכנה', steps: [''] }];
+      setRecipe({ ...recipe, steps: defaultSteps });
+    }
+    setState(AppState.EDITING);
+  };
+
+  const handleCancelEdit = () => {
+    if (originalRecipe) {
+      setRecipe(originalRecipe);
+    }
+    setState(AppState.VIEWING);
+    setOriginalRecipe(null);
+  };
 
   const handleSaveEdit = (updatedRecipe: Recipe) => {
     setRecipe(updatedRecipe);
@@ -749,13 +768,34 @@ const App: React.FC = () => {
               )}
 
               <div className="flex flex-col gap-4">
-                <button
-                  onClick={handleSaveToLibrary}
-                  className="w-full flex items-center justify-center gap-3 bg-orange-600 text-white py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 group"
-                >
-                  <Save size={28} className="group-hover:rotate-12 transition-transform" />
-                  {activeSavedId ? 'עדכן שמירה' : 'שמור לספרייה'}
-                </button>
+                {!activeSavedId && (
+                  <button
+                    onClick={handleSaveToLibrary}
+                    className="w-full flex items-center justify-center gap-3 bg-orange-600 text-white py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 group"
+                  >
+                    <Save size={28} className="group-hover:rotate-12 transition-transform" />
+                    שמור לספרייה
+                  </button>
+                )}
+
+                {activeSavedId && state === AppState.EDITING && (
+                  <div className="flex flex-col gap-4">
+                    <button
+                      onClick={() => recipe && handleSaveEdit(recipe)}
+                      className="w-full flex items-center justify-center gap-3 bg-orange-600 text-white py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 group"
+                    >
+                      <Save size={28} className="group-hover:rotate-12 transition-transform" />
+                      שמור שינויים
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="w-full flex items-center justify-center gap-2 text-slate-500 border-2 border-slate-200 hover:bg-slate-50 py-4 rounded-3xl font-bold transition-all text-sm"
+                    >
+                      <X size={18} />
+                      ביטול
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <button onClick={copyForDocs} className="flex items-center justify-center gap-3 bg-indigo-600 text-white py-5 rounded-3xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 text-xs">
                     <Copy size={18} /> העתק Docs
@@ -778,8 +818,7 @@ const App: React.FC = () => {
               {state === AppState.EDITING ? (
                 <RecipeForm
                   recipe={recipe}
-                  onSave={handleSaveEdit}
-                  onCancel={() => setState(AppState.VIEWING)}
+                  onChange={setRecipe}
                 />
               ) : (
                 <RecipeDisplay recipe={recipe} />

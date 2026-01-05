@@ -5,24 +5,14 @@ import { Recipe, RECIPE_CATEGORIES, InstructionPhase } from '../types';
 
 interface RecipeFormProps {
   recipe: Recipe;
-  onSave: (recipe: Recipe) => void;
-  onCancel: () => void;
+  onChange: (recipe: Recipe) => void;
 }
 
-const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, onCancel }) => {
-  const [recipe, setRecipe] = useState<Recipe>(() => {
-    // Ensure we have at least one phase
-    let steps: InstructionPhase[] = initialRecipe.steps || [];
+const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, onChange }) => {
 
-    if (steps.length === 0) {
-      steps = [{ name: 'אופן ההכנה', steps: [''] }];
-    }
-
-    return { ...initialRecipe, steps };
-  });
 
   const handleAddCategory = () => {
-    setRecipe({
+    onChange({
       ...recipe,
       categories: [...recipe.categories, { name: 'חלק חדש (למשל: לרוטב)', items: [''] }]
     });
@@ -30,30 +20,30 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
 
   const handleRemoveCategory = (idx: number) => {
     const newCategories = recipe.categories.filter((_, i) => i !== idx);
-    setRecipe({ ...recipe, categories: newCategories });
+    onChange({ ...recipe, categories: newCategories });
   };
 
   const handleAddIngredient = (catIdx: number) => {
     const newCategories = [...recipe.categories];
     newCategories[catIdx].items.push('');
-    setRecipe({ ...recipe, categories: newCategories });
+    onChange({ ...recipe, categories: newCategories });
   };
 
   const handleIngredientChange = (catIdx: number, itemIdx: number, value: string) => {
     const newCategories = [...recipe.categories];
     newCategories[catIdx].items[itemIdx] = value;
-    setRecipe({ ...recipe, categories: newCategories });
+    onChange({ ...recipe, categories: newCategories });
   };
 
   const handleRemoveIngredient = (catIdx: number, itemIdx: number) => {
     const newCategories = [...recipe.categories];
     newCategories[catIdx].items = newCategories[catIdx].items.filter((_, i) => i !== itemIdx);
-    setRecipe({ ...recipe, categories: newCategories });
+    onChange({ ...recipe, categories: newCategories });
   };
 
   /* Phrase & Step Handlers */
   const handleAddPhase = () => {
-    setRecipe({
+    onChange({
       ...recipe,
       steps: [...recipe.steps, { name: 'חלק חדש', steps: [''] }]
     });
@@ -62,58 +52,52 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
   const handleRemovePhase = (phaseIdx: number) => {
     if (recipe.steps.length <= 1) return; // Prevent removing the last phase
     const newSteps = recipe.steps.filter((_, i) => i !== phaseIdx);
-    setRecipe({ ...recipe, steps: newSteps });
+    onChange({ ...recipe, steps: newSteps });
   };
 
   const handlePhaseNameChange = (phaseIdx: number, value: string) => {
     const newSteps = [...recipe.steps];
     newSteps[phaseIdx].name = value;
-    setRecipe({ ...recipe, steps: newSteps });
+    onChange({ ...recipe, steps: newSteps });
   };
 
   const handleAddStep = (phaseIdx: number) => {
     const newSteps = [...recipe.steps];
     newSteps[phaseIdx].steps.push('');
-    setRecipe({ ...recipe, steps: newSteps });
+    onChange({ ...recipe, steps: newSteps });
   };
 
   const handleStepChange = (phaseIdx: number, stepIdx: number, value: string) => {
     const newSteps = [...recipe.steps];
     newSteps[phaseIdx].steps[stepIdx] = value;
-    setRecipe({ ...recipe, steps: newSteps });
+    onChange({ ...recipe, steps: newSteps });
   };
 
   const handleRemoveStep = (phaseIdx: number, stepIdx: number) => {
     const newSteps = [...recipe.steps];
     newSteps[phaseIdx].steps = newSteps[phaseIdx].steps.filter((_, i) => i !== stepIdx);
-    setRecipe({ ...recipe, steps: newSteps });
+    onChange({ ...recipe, steps: newSteps });
   };
 
   const handleAddTip = () => {
-    setRecipe({ ...recipe, tips: [...(recipe.tips || []), ''] });
+    onChange({ ...recipe, tips: [...(recipe.tips || []), ''] });
   };
 
   const handleTipChange = (idx: number, value: string) => {
     const newTips = [...(recipe.tips || [])];
     newTips[idx] = value;
-    setRecipe({ ...recipe, tips: newTips });
+    onChange({ ...recipe, tips: newTips });
   };
 
   const handleRemoveTip = (idx: number) => {
     const newTips = (recipe.tips || []).filter((_, i) => i !== idx);
-    setRecipe({ ...recipe, tips: newTips });
+    onChange({ ...recipe, tips: newTips });
   };
 
   return (
     <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl border border-slate-100 p-8 sm:p-12 space-y-12 animate-in fade-in zoom-in-95 duration-500">
       <div className="flex items-center justify-between border-b border-slate-100 pb-8">
         <h2 className="text-3xl font-black text-slate-900">עריכת המתכון</h2>
-        <button
-          onClick={onCancel}
-          className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
-        >
-          <X size={28} />
-        </button>
       </div>
 
       <div className="space-y-10">
@@ -124,7 +108,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
             <input
               type="text"
               value={recipe.title}
-              onChange={(e) => setRecipe({ ...recipe, title: e.target.value })}
+              onChange={(e) => onChange({ ...recipe, title: e.target.value })}
               className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 focus:border-orange-500 outline-none transition-all text-2xl font-black bg-slate-50 focus:bg-white"
               placeholder="איך קוראים למנה?"
             />
@@ -137,7 +121,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               </label>
               <select
                 value={recipe.category}
-                onChange={(e) => setRecipe({ ...recipe, category: e.target.value })}
+                onChange={(e) => onChange({ ...recipe, category: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none appearance-none bg-slate-50 font-bold pr-12"
               >
                 {RECIPE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -152,7 +136,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <input
                 type="text"
                 value={recipe.prepTime}
-                onChange={(e) => setRecipe({ ...recipe, prepTime: e.target.value })}
+                onChange={(e) => onChange({ ...recipe, prepTime: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none bg-slate-50 font-bold"
               />
             </div>
@@ -164,7 +148,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
               <input
                 type="text"
                 value={recipe.servings || ''}
-                onChange={(e) => setRecipe({ ...recipe, servings: e.target.value })}
+                onChange={(e) => onChange({ ...recipe, servings: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-orange-500 outline-none bg-slate-50 font-bold"
                 placeholder="למשל: 4 מנות"
               />
@@ -204,7 +188,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
                   onChange={(e) => {
                     const newCats = [...recipe.categories];
                     newCats[catIdx].name = e.target.value;
-                    setRecipe({ ...recipe, categories: newCats });
+                    onChange({ ...recipe, categories: newCats });
                   }}
                   className="bg-transparent border-b-2 border-slate-200 focus:border-orange-500 outline-none text-xl font-black text-orange-700 mb-6 px-1 py-1 w-full sm:w-auto"
                 />
@@ -354,22 +338,6 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe: initialRecipe, onSave, 
             ))}
           </div>
         </section>
-
-        {/* Footer Actions */}
-        <div className="pt-10 flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => onSave(recipe)}
-            className="flex-grow flex items-center justify-center gap-3 bg-orange-600 text-white py-5 rounded-3xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all active:scale-95"
-          >
-            <Save size={24} /> שמור שינויים
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-10 py-5 rounded-3xl border-2 border-slate-100 text-slate-500 font-black hover:bg-slate-50 transition-all"
-          >
-            ביטול
-          </button>
-        </div>
       </div>
     </div>
   );
