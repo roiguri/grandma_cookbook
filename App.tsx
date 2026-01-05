@@ -4,7 +4,7 @@ import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
   BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
-  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut
+  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
@@ -20,6 +20,7 @@ import LoginScreen from './components/LoginScreen';
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
 
 type LibraryTab = 'review' | 'all' | 'favorites';
+type ViewMode = 'category' | 'date';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('category');
 
   // Jobs state for background processing
   const [jobs, setJobs] = useState<AnalysisJob[]>([]);
@@ -289,6 +291,70 @@ const App: React.FC = () => {
     addNotification("גיבוי JSON הורד בהצלחה (קישורים לענן)", "success");
   };
 
+  const renderRecipeCard = (saved: SavedRecipe) => (
+    <div
+      key={saved.id}
+      onClick={() => handleViewSaved(saved)}
+      className={`group relative bg-white border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden ${isLibraryCompact
+        ? 'flex items-center gap-3 p-3 rounded-2xl border-slate-100'
+        : 'flex flex-col rounded-[2.5rem] sm:rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
+        }`}
+    >
+      {/* Thumbnail/Image */}
+      <div className={`${isLibraryCompact ? 'w-14 h-14 rounded-xl' : 'aspect-[16/10]'} overflow-hidden bg-slate-100 relative`}>
+        <img src={saved.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
+        {!isLibraryCompact && (
+          <>
+            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
+                className={`p-2.5 sm:p-3 rounded-2xl shadow-xl transition-all ${saved.isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
+              >
+                <Heart size={18} className="sm:w-5 sm:h-5" fill={saved.isFavorite ? 'currentColor' : 'none'} />
+              </button>
+            </div>
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+              {saved.status === 'unreviewed' && (
+                <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
+                  <RefreshCw size={10} className="animate-spin" /> לביקורת
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className={`${isLibraryCompact ? 'flex-grow min-w-0' : 'p-6 sm:p-8 flex flex-col gap-3 sm:gap-4'}`}>
+        <h4 className={`font-black text-slate-800 leading-tight group-hover:text-orange-600 transition-colors ${isLibraryCompact ? 'truncate text-base sm:text-lg' : 'line-clamp-2 text-xl sm:text-2xl min-h-[3.5rem] sm:min-h-[4rem]'}`}>{saved.recipe.title}</h4>
+        <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
+          <div className="flex items-center gap-1.5"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
+          {saved.systemComments && !isLibraryCompact && (
+            <div className="flex items-center gap-1.5 text-blue-500"><MessageSquare size={16} /> הערת מערכת</div>
+          )}
+        </div>
+      </div>
+
+      {/* Actions (Compact or Hover) */}
+      <div className={`flex items-center gap-2 ${isLibraryCompact ? '' : 'absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
+        {isLibraryCompact && (
+          <button
+            onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
+            className={`p-3 rounded-xl ${saved.isFavorite ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}
+          >
+            <Heart size={18} fill={saved.isFavorite ? 'currentColor' : 'none'} />
+          </button>
+        )}
+        <button
+          onClick={(e) => handleDeleteSaved(saved.id, e)}
+          className={`p-3 rounded-xl transition-all ${confirmDeleteId === saved.id ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
+        >
+          {confirmDeleteId === saved.id ? <Check size={18} /> : <Trash2 size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -430,26 +496,46 @@ const App: React.FC = () => {
                   <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-2">הספרייה שלך</h2>
                   <p className="text-slate-500 font-medium text-sm sm:text-base">ניהול וארגון המתכונים שלך</p>
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="flex bg-slate-200 p-1 rounded-2xl flex-1 sm:flex-none justify-center">
-                    <button
-                      onClick={() => setIsLibraryCompact(false)}
-                      className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="תצוגת גריד"
-                    >
-                      <LayoutGrid size={20} />
-                    </button>
-                    <button
-                      onClick={() => setIsLibraryCompact(true)}
-                      className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                      title="תצוגת שורות קומפקטית"
-                    >
-                      <List size={20} />
-                    </button>
+                <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
+                  <div className="flex gap-2">
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-slate-200 p-1 rounded-2xl">
+                      <button
+                        onClick={() => setViewMode('category')}
+                        className={`p-2 sm:px-3 rounded-xl transition-all flex items-center gap-2 ${viewMode === 'category' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="לפי קטגוריות"
+                      >
+                        <Tag size={20} />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('date')}
+                        className={`p-2 sm:px-3 rounded-xl transition-all flex items-center gap-2 ${viewMode === 'date' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="לפי תאריך (מהחדש לישן)"
+                      >
+                        <Calendar size={20} />
+                      </button>
+                    </div>
+
+                    <div className="flex bg-slate-200 p-1 rounded-2xl">
+                      <button
+                        onClick={() => setIsLibraryCompact(false)}
+                        className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="תצוגת גריד"
+                      >
+                        <LayoutGrid size={20} />
+                      </button>
+                      <button
+                        onClick={() => setIsLibraryCompact(true)}
+                        className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        title="תצוגת שורות קומפקטית"
+                      >
+                        <List size={20} />
+                      </button>
+                    </div>
                   </div>
                   <button
                     onClick={exportAllAsJson}
-                    className="bg-white text-orange-600 border-2 border-orange-100 hover:border-orange-500 p-3 rounded-2xl font-black transition-all shadow-sm hover:shadow-md active:scale-95"
+                    className="bg-white text-orange-600 border-2 border-orange-100 hover:border-orange-500 p-3 rounded-2xl font-black transition-all shadow-sm hover:shadow-md active:scale-95 w-fit" // Added w-fit to prevent full width
                     title="ייצא גיבוי JSON"
                   >
                     <Download size={20} />
@@ -523,104 +609,48 @@ const App: React.FC = () => {
               </section>
             )}
 
-            {Object.entries(groupedRecipes).length === 0 ? (
+            {Object.entries(groupedRecipes).length === 0 && filteredRecipes.length === 0 ? (
               <div className="text-center py-20 sm:py-32 bg-white rounded-[2rem] sm:rounded-[3rem] border-2 border-dashed border-slate-200 shadow-inner px-4">
                 <Library size={60} className="mx-auto text-slate-200 mb-6 sm:w-20 sm:h-20" />
                 <p className="text-slate-400 font-black text-xl sm:text-2xl">אין מתכונים בתצוגה זו</p>
                 <button onClick={handleReset} className="mt-6 sm:mt-8 bg-slate-900 text-white px-8 sm:px-10 py-3 sm:py-4 rounded-2xl font-black text-base sm:text-lg hover:bg-black transition-all w-full sm:w-auto">צור מתכון חדש</button>
               </div>
             ) : (
-              (Object.entries(groupedRecipes) as [string, SavedRecipe[]][])
-                .sort((a, b) => {
-                  const idxA = RECIPE_CATEGORIES.indexOf(a[0]);
-                  const idxB = RECIPE_CATEGORIES.indexOf(b[0]);
-                  return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-                })
-                .map(([cat, items]) => {
-                  const isCollapsed = collapsedLibraryCats.has(cat);
-                  return (
-                    <section key={cat} className="space-y-4">
-                      <div
-                        onClick={() => toggleLibraryCategory(cat)}
-                        className="flex items-center gap-3 sm:gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-lg py-4 sm:py-6 z-10 border-b border-transparent cursor-pointer group"
-                      >
-                        <div className="h-8 w-2 sm:h-10 sm:w-2.5 bg-orange-600 rounded-full shadow-lg shadow-orange-100 group-hover:scale-y-110 transition-transform"></div>
-                        <h3 className="text-2xl sm:text-3xl font-black text-slate-800">{cat}</h3>
-                        <div className="flex-grow h-px bg-gradient-to-l from-slate-200 to-transparent"></div>
-                        <span className="bg-slate-200 text-slate-700 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-black ring-1 ring-slate-300/20 whitespace-nowrap">{items.length} <span className="hidden sm:inline">מתכונים</span></span>
-                        {isCollapsed ? <ChevronDown size={24} className="text-slate-400 sm:w-7 sm:h-7" /> : <ChevronUp size={24} className="text-slate-400 sm:w-7 sm:h-7" />}
-                      </div>
-
-                      {!isCollapsed && (
-                        <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10'}`}>
-                          {items.map(saved => (
-                            <div
-                              key={saved.id}
-                              onClick={() => handleViewSaved(saved)}
-                              className={`group relative bg-white border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden ${isLibraryCompact
-                                ? 'flex items-center gap-3 p-3 rounded-2xl border-slate-100'
-                                : 'flex flex-col rounded-[2.5rem] sm:rounded-[3rem] border-slate-100 transform hover:-translate-y-2'
-                                }`}
-                            >
-                              {/* Thumbnail/Image */}
-                              <div className={`${isLibraryCompact ? 'w-14 h-14 rounded-xl' : 'aspect-[16/10]'} overflow-hidden bg-slate-100 relative`}>
-                                <img src={saved.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
-                                {!isLibraryCompact && (
-                                  <>
-                                    <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-2">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
-                                        className={`p-2.5 sm:p-3 rounded-2xl shadow-xl transition-all ${saved.isFavorite ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
-                                      >
-                                        <Heart size={18} className="sm:w-5 sm:h-5" fill={saved.isFavorite ? 'currentColor' : 'none'} />
-                                      </button>
-                                    </div>
-                                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
-                                      {saved.status === 'unreviewed' && (
-                                        <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-                                          <RefreshCw size={10} className="animate-spin" /> לביקורת
-                                        </span>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Content */}
-                              <div className={`${isLibraryCompact ? 'flex-grow min-w-0' : 'p-6 sm:p-8 flex flex-col gap-3 sm:gap-4'}`}>
-                                <h4 className={`font-black text-slate-800 leading-tight group-hover:text-orange-600 transition-colors ${isLibraryCompact ? 'truncate text-base sm:text-lg' : 'line-clamp-2 text-xl sm:text-2xl min-h-[3.5rem] sm:min-h-[4rem]'}`}>{saved.recipe.title}</h4>
-                                <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
-                                  <div className="flex items-center gap-1.5"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
-                                  {saved.systemComments && !isLibraryCompact && (
-                                    <div className="flex items-center gap-1.5 text-blue-500"><MessageSquare size={16} /> הערת מערכת</div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Actions (Compact or Hover) */}
-                              <div className={`flex items-center gap-2 ${isLibraryCompact ? '' : 'absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
-                                {isLibraryCompact && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
-                                    className={`p-3 rounded-xl ${saved.isFavorite ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}
-                                  >
-                                    <Heart size={18} fill={saved.isFavorite ? 'currentColor' : 'none'} />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={(e) => handleDeleteSaved(saved.id, e)}
-                                  className={`p-3 rounded-xl transition-all ${confirmDeleteId === saved.id ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
-                                >
-                                  {confirmDeleteId === saved.id ? <Check size={18} /> : <Trash2 size={18} />}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+              viewMode === 'date' ? (
+                <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10'}`}>
+                  {filteredRecipes.map(saved => renderRecipeCard(saved))}
+                </div>
+              ) : (
+                (Object.entries(groupedRecipes) as [string, SavedRecipe[]][])
+                  .sort((a, b) => {
+                    const idxA = RECIPE_CATEGORIES.indexOf(a[0]);
+                    const idxB = RECIPE_CATEGORIES.indexOf(b[0]);
+                    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                  })
+                  .map(([cat, items]) => {
+                    const isCollapsed = collapsedLibraryCats.has(cat);
+                    return (
+                      <section key={cat} className="space-y-4">
+                        <div
+                          onClick={() => toggleLibraryCategory(cat)}
+                          className="flex items-center gap-3 sm:gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-lg py-4 sm:py-6 z-10 border-b border-transparent cursor-pointer group"
+                        >
+                          <div className="h-8 w-2 sm:h-10 sm:w-2.5 bg-orange-600 rounded-full shadow-lg shadow-orange-100 group-hover:scale-y-110 transition-transform"></div>
+                          <h3 className="text-2xl sm:text-3xl font-black text-slate-800">{cat}</h3>
+                          <div className="flex-grow h-px bg-gradient-to-l from-slate-200 to-transparent"></div>
+                          <span className="bg-slate-200 text-slate-700 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-black ring-1 ring-slate-300/20 whitespace-nowrap">{items.length} <span className="hidden sm:inline">מתכונים</span></span>
+                          {isCollapsed ? <ChevronDown size={24} className="text-slate-400 sm:w-7 sm:h-7" /> : <ChevronUp size={24} className="text-slate-400 sm:w-7 sm:h-7" />}
                         </div>
-                      )}
-                    </section>
-                  );
-                })
+
+                        {!isCollapsed && (
+                          <div className={`animate-in fade-in slide-in-from-top-2 duration-500 ${isLibraryCompact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10'}`}>
+                            {items.map(saved => renderRecipeCard(saved))}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })
+              )
             )}
           </div>
         )}
