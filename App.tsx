@@ -1,10 +1,10 @@
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
   BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
-  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar
+  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
@@ -228,12 +228,17 @@ const App: React.FC = () => {
     setState(AppState.VIEWING);
   };
 
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [state, libraryTab, viewMode]);
+
   const handleReset = () => {
     setState(AppState.IDLE);
     setRecipe(null);
     setRecipeImages([]);
     setError(null);
     setActiveSavedId(null);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const copyForDocs = async () => {
@@ -408,7 +413,10 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <button
-              onClick={() => setState(AppState.HISTORY)}
+              onClick={() => {
+                setState(AppState.HISTORY);
+                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all relative ${state === AppState.HISTORY ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-100'}`}
               title="ספריית מתכונים"
             >
@@ -425,7 +433,7 @@ const App: React.FC = () => {
             )}
             {state !== AppState.IDLE && (
               <button onClick={handleReset} className="p-2.5 rounded-xl text-orange-600 hover:bg-orange-100 transition-colors" title="מתכון חדש">
-                <RefreshCw size={20} />
+                <Plus size={20} />
               </button>
             )}
             <div className="w-px h-8 bg-slate-200 mx-1"></div>
