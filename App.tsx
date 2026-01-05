@@ -43,6 +43,7 @@ const App: React.FC = () => {
   // Jobs state for background processing
   const [jobs, setJobs] = useState<AnalysisJob[]>([]);
   const [notifications, setNotifications] = useState<{ id: string, message: string, type: 'success' | 'info' }[]>([]);
+  const [uploaderKey, setUploaderKey] = useState(0);
 
   // Library view options
   const [isLibraryCompact, setIsLibraryCompact] = useState(false);
@@ -117,6 +118,7 @@ const App: React.FC = () => {
 
     setJobs(prev => [newJob, ...prev]);
     addNotification("מתחיל בפענוח המתכון ברקע...", "info");
+    setUploaderKey(prev => prev + 1); // Reset uploader immediately
 
     setState(AppState.IDLE);
 
@@ -452,7 +454,7 @@ const App: React.FC = () => {
             <p className="text-slate-500 mb-14 text-xl max-w-2xl mx-auto leading-relaxed font-medium">
               צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.
             </p>
-            <ImageUploader onImagesSelected={handleImagesSelect} />
+            <ImageUploader key={uploaderKey} onImagesSelected={handleImagesSelect} />
 
             {savedRecipes.length > 0 && (
               <div className="mt-24 text-right animate-in fade-in slide-in-from-bottom-12 duration-1000">
