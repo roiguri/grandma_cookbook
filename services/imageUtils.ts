@@ -24,7 +24,6 @@ export const compressImage = async (base64Str: string, maxWidth = 1200, maxHeigh
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject(new Error("Failed to get canvas context"));
-      
       ctx.drawImage(img, 0, 0, width, height);
       // Export as JPEG with 0.8 quality to significantly reduce size while maintaining clarity for OCR
       resolve(canvas.toDataURL('image/jpeg', 0.8));
