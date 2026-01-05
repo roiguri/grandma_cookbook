@@ -15,6 +15,7 @@ import ImageUploader from './components/ImageUploader';
 import { dbService } from './services/dbService';
 import { useAuth, signOut } from './services/authService';
 import LoginScreen from './components/LoginScreen';
+import FullscreenImageViewer from './components/FullscreenImageViewer';
 
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
     const unsubscribe = dbService.subscribeToRecipes((recipes) => {
       setSavedRecipes(recipes);
     });
+    return () => unsubscribe();
     return () => unsubscribe();
   }, [user]);
 
@@ -759,35 +761,11 @@ const App: React.FC = () => {
       </main>
 
       {fullscreenImageIndex !== null && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md sm:bg-slate-950/98 sm:backdrop-blur-none flex flex-col items-center justify-center animate-in fade-in duration-500" onClick={() => setFullscreenImageIndex(null)}>
-          <button className="absolute top-8 right-8 text-white/40 p-5 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-[2rem] active:scale-90 z-50">
-            <X size={40} />
-          </button>
-          <div className="relative w-full h-full flex items-center justify-center">
-            {recipeImages.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex - 1 + recipeImages.length) % recipeImages.length); }}
-                  className="absolute right-0 sm:right-4 top-1/2 -translate-y-1/2 p-6 bg-white/5 text-white/60 rounded-full hover:bg-white/20 hover:text-white transition-all hidden xl:block z-10"
-                >
-                  <ChevronRight size={50} />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setFullscreenImageIndex((fullscreenImageIndex + 1) % recipeImages.length); }}
-                  className="absolute left-0 sm:left-4 top-1/2 -translate-y-1/2 p-6 bg-white/5 text-white/60 rounded-full hover:bg-white/20 hover:text-white transition-all hidden xl:block z-10"
-                >
-                  <ChevronLeft size={50} />
-                </button>
-              </>
-            )}
-            <img
-              src={recipeImages[fullscreenImageIndex]}
-              className="max-w-full max-h-full object-contain shadow-[0_0_150px_rgba(0,0,0,0.8)] rounded-3xl ring-4 ring-white/5"
-              alt=""
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
+        <FullscreenImageViewer
+          images={recipeImages}
+          initialIndex={fullscreenImageIndex}
+          onClose={() => setFullscreenImageIndex(null)}
+        />
       )}
 
       {(copySuccess || saveSuccess) && (
