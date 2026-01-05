@@ -16,6 +16,7 @@ import { dbService } from './services/dbService';
 import { useAuth, signOut } from './services/authService';
 import LoginScreen from './components/LoginScreen';
 import FullscreenImageViewer from './components/FullscreenImageViewer';
+import ConfirmationModal from './components/ConfirmationModal';
 
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
@@ -36,7 +37,7 @@ const App: React.FC = () => {
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, recipeId: string | null }>({ isOpen: false, recipeId: null });
 
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('category');
@@ -190,23 +191,34 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteSaved = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteSaved = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    setDeleteModal({ isOpen: true, recipeId: id });
+  };
 
-    if (confirmDeleteId === id) {
-      const recipeToDelete = savedRecipes.find(r => r.id === id);
-      if (recipeToDelete) {
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.recipeId) return;
+
+    const id = deleteModal.recipeId;
+    const recipeToDelete = savedRecipes.find(r => r.id === id);
+
+    if (recipeToDelete) {
+      try {
         await dbService.deleteRecipe(id, recipeToDelete.images);
+        addNotification("המתכון נמחק מהספרייה", "success");
+
+        // If we are currently viewing/editing the deleted recipe, reset to home
+        if (activeSavedId === id) {
+          handleReset();
+        }
+      } catch (error) {
+        console.error("Failed to delete recipe:", error);
+        addNotification("שגיאה במחיקת המתכון", "info");
       }
-      setConfirmDeleteId(null);
-      if (activeSavedId === id) {
-        handleReset();
-      }
-    } else {
-      setConfirmDeleteId(id);
-      setTimeout(() => setConfirmDeleteId(prev => prev === id ? null : prev), 4000);
     }
+
+    setDeleteModal({ isOpen: false, recipeId: null });
   };
 
   const handleViewSaved = (saved: SavedRecipe) => {
@@ -345,7 +357,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Actions (Compact or Hover) */}
-      <div className={`flex items-center gap-2 ${isLibraryCompact ? '' : 'absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
+      <div className={`flex items-center gap-2 ${isLibraryCompact ? '' : 'absolute bottom-4 left-4 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity'}`}>
         {isLibraryCompact && (
           <button
             onClick={(e) => { e.stopPropagation(); updateManagementField(saved.id, { isFavorite: !saved.isFavorite }); }}
@@ -356,9 +368,10 @@ const App: React.FC = () => {
         )}
         <button
           onClick={(e) => handleDeleteSaved(saved.id, e)}
-          className={`p-3 rounded-xl transition-all ${confirmDeleteId === saved.id ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
+          className="p-3 rounded-xl bg-slate-50 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+          title="מחק מתכון"
         >
-          {confirmDeleteId === saved.id ? <Check size={18} /> : <Trash2 size={18} />}
+          <Trash2 size={18} />
         </button>
       </div>
     </div>
@@ -751,6 +764,14 @@ const App: React.FC = () => {
                     <FileText size={18} className="text-orange-600" /> הורד HTML
                   </button>
                 </div>
+
+                <button
+                  onClick={(e) => handleDeleteSaved(activeSavedId, e)}
+                  className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-600 hover:bg-red-50 py-4 rounded-3xl font-bold transition-all text-sm"
+                >
+                  <Trash2 size={18} />
+                  מחק מתכון זה
+                </button>
               </div>
             </div>
             <div className="flex-grow">
@@ -775,6 +796,16 @@ const App: React.FC = () => {
           onClose={() => setFullscreenImageIndex(null)}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, recipeId: null })}
+        onConfirm={handleConfirmDelete}
+        title="מחיקת מתכון"
+        message="האם אתה בטוח שברצונך למחוק את המתכון? פעולה זו אינה הפיכה."
+        confirmText="כן, מחק מתכון"
+        isDestructive={true}
+      />
 
       {(copySuccess || saveSuccess) && (
         <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-2xl text-white px-12 py-6 rounded-[3rem] flex items-center gap-5 shadow-[0_30px_70px_rgba(0,0,0,0.5)] z-[100] copy-toast border border-white/20 ring-4 ring-white/10 animate-in slide-in-from-bottom-full">
