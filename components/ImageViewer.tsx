@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCw, Redo2 } from 'lucide-react';
 
 interface ImageViewerProps {
   src: string;
@@ -14,13 +14,45 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null); // To store current state before switch
 
-  // Reset state when image source changes
+  // Store view state for each image: { [src]: { zoom, rotation, pan } }
+  const viewStates = useRef<Record<string, { zoom: number, rotation: number, pan: { x: number, y: number } }>>({});
+  const prevSrc = useRef<string>(src);
+
+  // Ref to hold the *current* state values, updated on every render
+  const currentState = useRef({ zoom: 1, rotation: 0, pan: { x: 0, y: 0 } });
+
+  // Sync state to ref
   useEffect(() => {
-    setZoom(1);
-    setRotation(0);
-    setPan({ x: 0, y: 0 });
+    currentState.current = { zoom, rotation, pan };
+  }, [zoom, rotation, pan]);
+
+  // Overwrite the logic to use the ref for saving
+  useEffect(() => {
+    // When src changes:
+    // 1. Save PREVIOUS image state
+    // Only save if prevSrc.current is valid (not the initial empty string or first render)
+    if (prevSrc.current) {
+      viewStates.current[prevSrc.current] = currentState.current;
+    }
+
+    // 2. Load NEW image state
+    const savedState = viewStates.current[src];
+    if (savedState) {
+      setZoom(savedState.zoom);
+      setRotation(savedState.rotation);
+      setPan(savedState.pan);
+      // Update current ref immediately so we don't overwrite with old values if a render happens
+      currentState.current = savedState;
+    } else {
+      setZoom(1);
+      setRotation(0);
+      setPan({ x: 0, y: 0 });
+      currentState.current = { zoom: 1, rotation: 0, pan: { x: 0, y: 0 } };
+    }
+
+    prevSrc.current = src;
   }, [src]);
 
   useEffect(() => {
@@ -97,6 +129,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
+  const handleReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setZoom(1);
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+    // Clear saved state for this image so it resets permanently if we navigate away and back
+    delete viewStates.current[src];
+  };
+
   return (
     <div
       ref={containerRef}
@@ -133,6 +174,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
         className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-900/80 backdrop-blur-xl p-2 pr-4 rounded-full border border-white/10 shadow-2xl z-30"
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          onClick={handleReset}
+          className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+          title="Reset View"
+        >
+          <Redo2 size={18} />
+        </button>
+        <div className="w-px h-5 bg-white/20 mx-1"></div>
+
         <button
           onClick={() => setZoom(Math.max(1, zoom - 0.5))}
           className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
