@@ -22,7 +22,7 @@ import ReviewMode from './components/ReviewMode';
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
 
-type LibraryTab = 'review' | 'all' | 'favorites';
+type LibraryTab = 'review' | 'approved' | 'favorites';
 type ViewMode = 'category' | 'date';
 
 const App: React.FC = () => {
@@ -41,7 +41,7 @@ const App: React.FC = () => {
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, recipeId: string | null }>({ isOpen: false, recipeId: null });
 
-  const [libraryTab, setLibraryTab] = useState<LibraryTab>('all');
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>('approved');
   const [viewMode, setViewMode] = useState<ViewMode>('category');
 
   // Jobs state for background processing
@@ -76,8 +76,10 @@ const App: React.FC = () => {
         return savedRecipes.filter(r => r.status === 'unreviewed');
       case 'favorites':
         return savedRecipes.filter(r => r.isFavorite);
+      case 'approved':
+        return savedRecipes.filter(r => r.status === 'reviewed');
       default:
-        return savedRecipes;
+        return savedRecipes.filter(r => r.status === 'reviewed');
     }
   }, [savedRecipes, libraryTab]);
 
@@ -633,11 +635,11 @@ const App: React.FC = () => {
                     מועדפים
                   </button>
                   <button
-                    onClick={() => setLibraryTab('all')}
-                    className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-lg sm:shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
+                    onClick={() => setLibraryTab('approved')}
+                    className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'approved' ? 'bg-green-600 text-white shadow-lg sm:shadow-xl shadow-green-100' : 'text-slate-500 hover:bg-slate-200'}`}
                   >
-                    <LayoutGrid size={16} className="sm:w-5 sm:h-5" />
-                    הכל
+                    <Check size={16} className="sm:w-5 sm:h-5" />
+                    מאושרים
                   </button>
                 </div>
               </div>
