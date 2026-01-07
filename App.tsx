@@ -766,33 +766,35 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                    <div className="space-y-2">
+                      <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                        <button
+                          onClick={() => updateManagementField(activeSavedId, { status: 'unreviewed' })}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'unreviewed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          <RefreshCw size={14} className={activeSavedRecipe.status === 'unreviewed' ? 'animate-spin' : ''} /> לביקורת
+                        </button>
+                        <button
+                          onClick={() => updateManagementField(activeSavedId, { status: 'reviewed' })}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'reviewed' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          <Check size={14} /> מאושר
+                        </button>
+                      </div>
+
                       <button
-                        onClick={() => updateManagementField(activeSavedId, { status: 'unreviewed' })}
-                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'unreviewed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        onClick={() => {
+                          setReviewFilter('all');
+                          const index = savedRecipes.findIndex(r => r.id === activeSavedId);
+                          setReviewStartIndex(index !== -1 ? index : 0);
+                          setState(AppState.REVIEW);
+                        }}
+                        className="w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                       >
-                        <RefreshCw size={14} className={activeSavedRecipe.status === 'unreviewed' ? 'animate-spin' : ''} /> לביקורת
-                      </button>
-                      <button
-                        onClick={() => updateManagementField(activeSavedId, { status: 'reviewed' })}
-                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'reviewed' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
-                      >
-                        <Check size={14} /> מאושר
+                        <Maximize size={16} />
+                        כנס למצב ביקורת
                       </button>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setReviewFilter('all');
-                        const index = savedRecipes.findIndex(r => r.id === activeSavedId);
-                        setReviewStartIndex(index !== -1 ? index : 0);
-                        setState(AppState.REVIEW);
-                      }}
-                      className="w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 mt-2"
-                    >
-                      <Maximize size={16} />
-                      כנס למצב ביקורת (הכל)
-                    </button>
 
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase px-1">הערות ניהול מערכת</label>
