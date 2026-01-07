@@ -25,6 +25,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   const [isTagVisible, setIsTagVisible] = useState(true);
   const tagHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
+  const evCache = useRef<Array<{ pointerId: number; clientX: number; clientY: number }>>([]);
+  const prevDiff = useRef<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -147,16 +149,47 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (zoom > 1) {
+    // Add to cache
+    evCache.current.push({ pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+
+    // Always capture pointer for multi-touch support
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (evCache.current.length === 2) {
+      // Start pinch
+      const dx = evCache.current[0].clientX - evCache.current[1].clientX;
+      const dy = evCache.current[0].clientY - evCache.current[1].clientY;
+      prevDiff.current = Math.hypot(dx, dy);
+      setIsDragging(false); // Stop dragging when pinching starts
+    } else if (evCache.current.length === 1 && zoom > 1) {
+      // Start drag
       e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
       setIsDragging(true);
       dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (isDragging && zoom > 1 && containerRef.current && imgRef.current) {
+    // Update event in cache
+    const index = evCache.current.findIndex(cachedEv => cachedEv.pointerId === e.pointerId);
+    if (index > -1) {
+      evCache.current[index] = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+    }
+
+    if (evCache.current.length === 2) {
+      // Handle Pinch
+      const dx = evCache.current[0].clientX - evCache.current[1].clientX;
+      const dy = evCache.current[0].clientY - evCache.current[1].clientY;
+      const curDiff = Math.hypot(dx, dy);
+
+      if (prevDiff.current > 0) {
+        const delta = curDiff - prevDiff.current;
+        if (Math.abs(delta) > 0) {
+          setZoom(prev => Math.min(3, Math.max(1, prev + delta * 0.01)));
+        }
+      }
+      prevDiff.current = curDiff;
+    } else if (isDragging && zoom > 1 && containerRef.current && imgRef.current) {
       e.preventDefault();
       const rawX = e.clientX - dragStart.current.x;
       const rawY = e.clientY - dragStart.current.y;
@@ -182,8 +215,27 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    setIsDragging(false);
+    const index = evCache.current.findIndex(cachedEv => cachedEv.pointerId === e.pointerId);
+    if (index > -1) {
+      evCache.current.splice(index, 1);
+    }
+
     e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (evCache.current.length < 2) {
+      prevDiff.current = -1;
+    }
+
+    if (evCache.current.length === 0) {
+      setIsDragging(false);
+    } else if (evCache.current.length === 1 && zoom > 1) {
+      // Resume dragging with the remaining finger
+      const remaining = evCache.current[0];
+      dragStart.current = { x: remaining.clientX - pan.x, y: remaining.clientY - pan.y };
+      setIsDragging(true);
+    } else {
+      setIsDragging(false);
+    }
   };
 
   const handleReset = (e: React.MouseEvent) => {
