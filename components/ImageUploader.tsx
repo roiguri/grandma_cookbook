@@ -60,7 +60,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-700">
+    <div className="max-w-xl mx-auto space-y-4 sm:space-y-8 animate-in fade-in zoom-in-95 duration-700">
       {/* Cropper Modal */}
       {croppingFiles.length > 0 && (
         <ImageCropper
@@ -93,39 +93,39 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
             onClick={() => cameraInputRef.current?.click()}
-            className="group relative flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-300 overflow-hidden"
+            className="group relative flex flex-col items-center justify-center p-4 sm:p-8 bg-white border-2 border-slate-100 rounded-3xl shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-300 overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10 flex flex-col items-center">
-              <div className="bg-orange-100 p-4 rounded-2xl text-orange-600 mb-4 group-hover:scale-110 transition-transform">
-                <Camera size={40} />
+              <div className="bg-orange-100 p-3 sm:p-4 rounded-2xl text-orange-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform">
+                <Camera className="w-8 h-8 sm:w-10 sm:h-10" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-1">צלמו תמונה</h3>
-              <p className="text-slate-500 text-sm">צלמו את המנה או המצרכים</p>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-1">צלמו תמונה</h3>
+              <p className="text-slate-500 text-xs sm:text-sm">צלמו את המנה או המצרכים</p>
             </div>
           </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="group relative flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 overflow-hidden"
+            className="group relative flex flex-col items-center justify-center p-4 sm:p-8 bg-white border-2 border-slate-100 rounded-3xl shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10 flex flex-col items-center">
-              <div className="bg-blue-100 p-4 rounded-2xl text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-                <Upload size={40} />
+              <div className="bg-blue-100 p-3 sm:p-4 rounded-2xl text-blue-600 mb-2 sm:mb-4 group-hover:scale-110 transition-transform">
+                <Upload className="w-8 h-8 sm:w-10 sm:h-10" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-1">העלו קבצים</h3>
-              <p className="text-slate-500 text-sm">בחרו עד 5 תמונות מהגלריה</p>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-1">העלו קבצים</h3>
+              <p className="text-slate-500 text-xs sm:text-sm">בחרו עד 5 תמונות מהגלריה</p>
             </div>
           </button>
         </div>
       ) : (
-        <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 space-y-6">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-xl border border-slate-100 space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-800">התמונות שבחרת ({selectedImages.length}/5)</h3>
+            <h3 className="text-base sm:text-lg font-bold text-slate-800">התמונות שבחרת ({selectedImages.length}/5)</h3>
             <button
               onClick={() => setSelectedImages([])}
-              className="text-slate-400 hover:text-red-500 text-sm font-medium"
+              className="text-slate-400 hover:text-red-500 text-xs sm:text-sm font-medium"
             >
               נקה הכל
             </button>
@@ -155,17 +155,17 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesSelected }) => {
 
           <button
             onClick={handleStartAnalysis}
-            className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black text-xl flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 active:scale-95"
+            className="w-full bg-orange-500 text-white py-3 sm:py-4 rounded-2xl font-black text-lg sm:text-xl flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 active:scale-95"
           >
-            <Play size={24} fill="currentColor" />
+            <Play size={20} fill="currentColor" className="sm:w-6 sm:h-6" />
             נתח וצור מתכון
           </button>
         </div>
       )}
 
-      <div className="bg-slate-100/50 border-2 border-dashed border-slate-200 rounded-3xl p-10 flex flex-col items-center justify-center transition-all hover:border-slate-300">
-        <ImageIcon size={48} className="text-slate-300 mb-4" />
-        <p className="text-slate-400 font-medium text-center leading-relaxed">
+      <div className="bg-slate-100/50 border-2 border-dashed border-slate-200 rounded-3xl p-6 sm:p-10 flex flex-col items-center justify-center transition-all hover:border-slate-300">
+        <ImageIcon className="text-slate-300 mb-3 sm:mb-4 w-10 h-10 sm:w-12 sm:h-12" />
+        <p className="text-slate-400 font-medium text-center leading-relaxed text-sm sm:text-base">
           ניתן להוסיף עד 5 תמונות<br />
           (למשל: דפים שונים של המתכון או תמונת מצרכים ותוצאה)
         </p>

@@ -62,7 +62,6 @@ const App: React.FC = () => {
       setSavedRecipes(recipes);
     });
     return () => unsubscribe();
-    return () => unsubscribe();
   }, [user]);
 
   const activeSavedRecipe = useMemo(() =>
@@ -501,22 +500,22 @@ const App: React.FC = () => {
 
       <main className={`max-w-5xl mx-auto px-4 pt-8 ${state === AppState.REVIEW ? 'hidden' : ''}`}>
         {state === AppState.IDLE && (
-          <div className="text-center py-16">
-            <div className="mb-6 inline-block p-4 bg-orange-100 rounded-[2rem] text-orange-600">
-              <UtensilsCrossed size={48} />
+          <div className="text-center py-8 sm:py-16">
+            <div className="mb-4 sm:mb-6 inline-block p-3 sm:p-4 bg-orange-100 rounded-[2rem] text-orange-600">
+              <UtensilsCrossed className="w-8 h-8 sm:w-12 sm:h-12" />
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
-            <p className="text-slate-500 mb-14 text-xl max-w-2xl mx-auto leading-relaxed font-medium">
+            <h2 className="text-3xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
+            <p className="text-slate-500 mb-8 sm:mb-14 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-medium">
               צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.
             </p>
             <ImageUploader key={uploaderKey} onImagesSelected={handleImagesSelect} />
 
             {savedRecipes.length > 0 && (
-              <div className="mt-24 text-right animate-in fade-in slide-in-from-bottom-12 duration-1000">
-                <div className="flex items-center justify-between mb-10 border-b border-slate-200 pb-4">
+              <div className="mt-12 sm:mt-24 text-right animate-in fade-in slide-in-from-bottom-12 duration-1000">
+                <div className="flex items-center justify-between mb-6 sm:mb-10 border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="text-orange-600" size={32} />
-                    <h3 className="text-2xl font-black text-slate-800">הצצה לספרייה שלך</h3>
+                    <BookOpen className="text-orange-600 w-6 h-6 sm:w-8 sm:h-8" />
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-800">הצצה לספרייה שלך</h3>
                   </div>
                   <button onClick={() => setState(AppState.HISTORY)} className="text-orange-600 font-black flex items-center gap-2 group">
                     כל המתכונים
