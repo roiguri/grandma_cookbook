@@ -277,13 +277,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
           e.preventDefault();
           e.stopPropagation();
 
-          if (zoom > 1) {
-            // Zoom out to 1x
-            setZoom(1);
-            setPan({ x: 0, y: 0 });
-          } else {
-            // Zoom in to 2.5x at tap position
-            const newZoom = 2.5;
+          // Zoom in by 0.5x, up to max 3x. No zoom out on double tap.
+          const newZoom = Math.min(3, zoom + 0.5);
+
+          if (newZoom !== zoom) {
             const rect = containerRef.current.getBoundingClientRect();
 
             // Tap position relative to container center
