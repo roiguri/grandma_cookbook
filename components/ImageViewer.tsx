@@ -27,6 +27,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   const dragStart = useRef({ x: 0, y: 0 });
   const evCache = useRef<Array<{ pointerId: number; clientX: number; clientY: number }>>([]);
   const prevDiff = useRef<number>(-1);
+  const lastTapTime = useRef<number>(0);
+  const tapStart = useRef<{ x: number; y: number; valid: boolean }>({ x: 0, y: 0, valid: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -155,6 +157,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
     // Always capture pointer for multi-touch support
     e.currentTarget.setPointerCapture(e.pointerId);
 
+    // Tap detection setup
+    if (evCache.current.length === 1) {
+      tapStart.current = { x: e.clientX, y: e.clientY, valid: true };
+    } else {
+      tapStart.current.valid = false; // Multi-touch cancels tap
+    }
+
     if (evCache.current.length === 2) {
       // Start pinch
       const dx = evCache.current[0].clientX - evCache.current[1].clientX;
@@ -176,8 +185,17 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
       evCache.current[index] = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
     }
 
-    if (evCache.current.length === 2) {
+    // Tap validation
+    if (tapStart.current.valid) {
+      const dist = Math.hypot(e.clientX - tapStart.current.x, e.clientY - tapStart.current.y);
+      if (dist > 10) {
+        tapStart.current.valid = false;
+      }
+    }
+
+    if (evCache.current.length === 2 && containerRef.current && imgRef.current) {
       // Handle Pinch
+      e.preventDefault();
       const dx = evCache.current[0].clientX - evCache.current[1].clientX;
       const dy = evCache.current[0].clientY - evCache.current[1].clientY;
       const curDiff = Math.hypot(dx, dy);
@@ -185,7 +203,29 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
       if (prevDiff.current > 0) {
         const delta = curDiff - prevDiff.current;
         if (Math.abs(delta) > 0) {
-          setZoom(prev => Math.min(3, Math.max(1, prev + delta * 0.01)));
+          setZoom(prev => {
+            const newZoom = Math.min(3, Math.max(1, prev + delta * 0.01));
+
+            // Clamp pan to keep image in bounds with new zoom
+            const viewportW = containerRef.current!.clientWidth;
+            const viewportH = containerRef.current!.clientHeight;
+            let imgW = imgRef.current!.clientWidth;
+            let imgH = imgRef.current!.clientHeight;
+
+            if (rotation % 180 !== 0) {
+              [imgW, imgH] = [imgH, imgW];
+            }
+
+            const maxPanX = Math.max(0, (imgW * newZoom - viewportW) / 2);
+            const maxPanY = Math.max(0, (imgH * newZoom - viewportH) / 2);
+
+            setPan(prevPan => ({
+              x: Math.min(Math.max(prevPan.x, -maxPanX), maxPanX),
+              y: Math.min(Math.max(prevPan.y, -maxPanY), maxPanY)
+            }));
+
+            return newZoom;
+          });
         }
       }
       prevDiff.current = curDiff;
@@ -228,6 +268,59 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
 
     if (evCache.current.length === 0) {
       setIsDragging(false);
+
+      // Handle Double Tap
+      if (tapStart.current.valid && containerRef.current && imgRef.current) {
+        const now = Date.now();
+        if (now - lastTapTime.current < 300) {
+          // Double Tap Detected
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (zoom > 1) {
+            // Zoom out to 1x
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          } else {
+            // Zoom in to 2.5x at tap position
+            const newZoom = 2.5;
+            const rect = containerRef.current.getBoundingClientRect();
+
+            // Tap position relative to container center
+            const cx = e.clientX - rect.left - rect.width / 2;
+            const cy = e.clientY - rect.top - rect.height / 2;
+
+            // Calculate new pan to keep tap point stationary
+            // P_screen = P_world * zoom + pan
+            // P_world = (P_screen - pan) / zoom
+            // newPan = P_screen - P_world * newZoom
+            const newPanX = cx - (cx - pan.x) / zoom * newZoom;
+            const newPanY = cy - (cy - pan.y) / zoom * newZoom;
+
+            // Clamp
+            const viewportW = containerRef.current.clientWidth;
+            const viewportH = containerRef.current.clientHeight;
+            let imgW = imgRef.current.clientWidth;
+            let imgH = imgRef.current.clientHeight;
+
+            if (rotation % 180 !== 0) {
+              [imgW, imgH] = [imgH, imgW];
+            }
+
+            const maxPanX = Math.max(0, (imgW * newZoom - viewportW) / 2);
+            const maxPanY = Math.max(0, (imgH * newZoom - viewportH) / 2);
+
+            const clampedX = Math.min(Math.max(newPanX, -maxPanX), maxPanX);
+            const clampedY = Math.min(Math.max(newPanY, -maxPanY), maxPanY);
+
+            setZoom(newZoom);
+            setPan({ x: clampedX, y: clampedY });
+          }
+          lastTapTime.current = 0; // Reset
+        } else {
+          lastTapTime.current = now;
+        }
+      }
     } else if (evCache.current.length === 1 && zoom > 1) {
       // Resume dragging with the remaining finger
       const remaining = evCache.current[0];
@@ -285,6 +378,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           draggable={false}
         />
       ) : (
