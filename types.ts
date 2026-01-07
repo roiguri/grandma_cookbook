@@ -45,7 +45,8 @@ export enum AppState {
   ANALYZING = 'ANALYZING',
   VIEWING = 'VIEWING',
   EDITING = 'EDITING',
-  HISTORY = 'HISTORY',
+  HISTORY = 'HISTORY', // Used for browsing the library
+  REVIEW = 'REVIEW',   // New Review Mode
   ERROR = 'ERROR'
 }
 

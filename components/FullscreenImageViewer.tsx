@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ChevronRight, ChevronLeft } from 'lucide-react';
+import React from 'react';
+import { X } from 'lucide-react';
 import ImageViewer from './ImageViewer';
 
 interface FullscreenImageViewerProps {
@@ -9,8 +9,6 @@ interface FullscreenImageViewerProps {
 }
 
 const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({ images, initialIndex, onClose }) => {
-  const [activeIndex, setActiveIndex] = useState(initialIndex);
-
   // Lock body scroll
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -19,15 +17,6 @@ const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({ images, i
     };
   }, []);
 
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
 
   return (
     <div
@@ -42,25 +31,9 @@ const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({ images, i
         className="relative w-full h-full flex items-center justify-center overflow-hidden"
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking content area (though ImageViewer also stops propagation often)
       >
-        {images.length > 1 && (
-          <>
-            <button
-              onClick={prevImage}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-slate-800/50 text-white/70 rounded-full hover:bg-slate-700 hover:text-white transition-all z-20 backdrop-blur-sm shadow-lg"
-            >
-              <ChevronRight size={32} />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-slate-800/50 text-white/70 rounded-full hover:bg-slate-700 hover:text-white transition-all z-20 backdrop-blur-sm shadow-lg"
-            >
-              <ChevronLeft size={32} />
-            </button>
-          </>
-        )}
-
         <ImageViewer
-          src={images[activeIndex]}
+          images={images}
+          initialIndex={initialIndex}
           className="bg-transparent"
         />
       </div>

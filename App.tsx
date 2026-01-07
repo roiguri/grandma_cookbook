@@ -17,6 +17,7 @@ import { useAuth, signOut } from './services/authService';
 import LoginScreen from './components/LoginScreen';
 import FullscreenImageViewer from './components/FullscreenImageViewer';
 import ConfirmationModal from './components/ConfirmationModal';
+import ReviewMode from './components/ReviewMode';
 
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
@@ -437,40 +438,42 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-12 antialiased">
-      <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105 active:scale-95" onClick={handleReset}>
-            <div className={`bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200 ${isSaving ? 'animate-pulse' : ''}`}><ChefHat size={22} /></div>
-            <h1 className="text-xl font-black text-slate-800 tracking-tight">Recipe Genie</h1>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button
-              onClick={() => {
-                setState(AppState.HISTORY);
-                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all relative ${state === AppState.HISTORY ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-100'}`}
-              title="ספריית מתכונים"
-            >
-              <Library size={18} />
-              <span className="hidden sm:inline">הספרייה שלי</span>
-              {activeJobsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-              )}
-            </button>
-
-            {state !== AppState.IDLE && (
-              <button onClick={handleReset} className="p-2.5 rounded-xl text-orange-600 hover:bg-orange-100 transition-colors" title="מתכון חדש">
-                <Plus size={20} />
+      {state !== AppState.REVIEW && (
+        <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
+          <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105 active:scale-95" onClick={handleReset}>
+              <div className={`bg-orange-600 p-2 rounded-xl text-white shadow-lg shadow-orange-200 ${isSaving ? 'animate-pulse' : ''}`}><ChefHat size={22} /></div>
+              <h1 className="text-xl font-black text-slate-800 tracking-tight">Recipe Genie</h1>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4">
+              <button
+                onClick={() => {
+                  setState(AppState.HISTORY);
+                  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all relative ${state === AppState.HISTORY ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-100'}`}
+                title="ספריית מתכונים"
+              >
+                <Library size={18} />
+                <span className="hidden sm:inline">הספרייה שלי</span>
+                {activeJobsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+                )}
               </button>
-            )}
-            <div className="w-px h-8 bg-slate-200 mx-1"></div>
-            <button onClick={signOut} className="p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" title="התנתק">
-              <LogOut size={20} />
-            </button>
+
+              {state !== AppState.IDLE && (
+                <button onClick={handleReset} className="p-2.5 rounded-xl text-orange-600 hover:bg-orange-100 transition-colors" title="מתכון חדש">
+                  <Plus size={20} />
+                </button>
+              )}
+              <div className="w-px h-8 bg-slate-200 mx-1"></div>
+              <button onClick={signOut} className="p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" title="התנתק">
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Background Notifications */}
       <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-full max-w-sm px-4">
@@ -482,7 +485,21 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 pt-8">
+      {state === AppState.REVIEW && (
+        <ReviewMode
+          recipes={savedRecipes.filter(r => r.status === 'unreviewed')}
+          onExit={() => {
+            setState(AppState.HISTORY);
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+          }}
+          onUpdateRecipe={(id, updates) => {
+            // Update local state to reflect changes immediately
+            setSavedRecipes(prev => prev.map(r => r.id === id ? { ...r, ...updates, recipe: updates.recipe || r.recipe } : r));
+          }}
+        />
+      )}
+
+      <main className={`max-w-5xl mx-auto px-4 pt-8 ${state === AppState.REVIEW ? 'hidden' : ''}`}>
         {state === AppState.IDLE && (
           <div className="text-center py-16">
             <div className="mb-6 inline-block p-4 bg-orange-100 rounded-[2rem] text-orange-600">
@@ -584,33 +601,45 @@ const App: React.FC = () => {
               </div>
 
               {/* Tab Navigation - Mobile Optimized */}
-              <div className="flex items-center gap-2 sm:gap-4 bg-slate-100 p-1.5 rounded-[2rem] w-full sm:w-fit sm:mx-0 overflow-x-auto no-scrollbar scroll-smooth">
-                <button
-                  onClick={() => setLibraryTab('review')}
-                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'review' ? 'bg-orange-600 text-white shadow-lg sm:shadow-xl shadow-orange-100' : 'text-slate-500 hover:bg-slate-200'}`}
-                >
-                  <RefreshCw size={16} className="sm:w-5 sm:h-5" />
-                  לביקורת
-                  {savedRecipes.filter(r => r.status === 'unreviewed').length > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1 animate-pulse">
-                      {savedRecipes.filter(r => r.status === 'unreviewed').length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setLibraryTab('favorites')}
-                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'favorites' ? 'bg-red-600 text-white shadow-lg sm:shadow-xl shadow-red-100' : 'text-slate-500 hover:bg-slate-200'}`}
-                >
-                  <Heart size={16} className="sm:w-5 sm:h-5" fill={libraryTab === 'favorites' ? 'currentColor' : 'none'} />
-                  מועדפים
-                </button>
-                <button
-                  onClick={() => setLibraryTab('all')}
-                  className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-lg sm:shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
-                >
-                  <LayoutGrid size={16} className="sm:w-5 sm:h-5" />
-                  הכל
-                </button>
+              <div className="flex flex-wrap items-center gap-4 w-full">
+                {savedRecipes.filter(r => r.status === 'unreviewed').length > 0 && (
+                  <button
+                    onClick={() => setState(AppState.REVIEW)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-[1.5rem] font-black hover:bg-black transition-all shadow-xl shadow-slate-200 order-first sm:order-last ml-auto animate-in zoom-in-95"
+                  >
+                    <RefreshCw size={18} className="animate-spin-slow" />
+                    התחל סבב בדיקה ({savedRecipes.filter(r => r.status === 'unreviewed').length})
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2 sm:gap-4 bg-slate-100 p-1.5 rounded-[2rem] w-full sm:w-fit overflow-x-auto no-scrollbar scroll-smooth flex-grow sm:flex-grow-0">
+                  <button
+                    onClick={() => setLibraryTab('review')}
+                    className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'review' ? 'bg-orange-600 text-white shadow-lg sm:shadow-xl shadow-orange-100' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    <RefreshCw size={16} className="sm:w-5 sm:h-5" />
+                    לביקורת
+                    {savedRecipes.filter(r => r.status === 'unreviewed').length > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1 animate-pulse">
+                        {savedRecipes.filter(r => r.status === 'unreviewed').length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setLibraryTab('favorites')}
+                    className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'favorites' ? 'bg-red-600 text-white shadow-lg sm:shadow-xl shadow-red-100' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    <Heart size={16} className="sm:w-5 sm:h-5" fill={libraryTab === 'favorites' ? 'currentColor' : 'none'} />
+                    מועדפים
+                  </button>
+                  <button
+                    onClick={() => setLibraryTab('all')}
+                    className={`flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 rounded-[1.5rem] font-black transition-all whitespace-nowrap flex-1 sm:flex-none text-sm sm:text-base ${libraryTab === 'all' ? 'bg-slate-800 text-white shadow-lg sm:shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    <LayoutGrid size={16} className="sm:w-5 sm:h-5" />
+                    הכל
+                  </button>
+                </div>
               </div>
             </div>
 

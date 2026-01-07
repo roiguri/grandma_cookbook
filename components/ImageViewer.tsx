@@ -1,59 +1,76 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Redo2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCw, Redo2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface ImageViewerProps {
-  src: string;
+  src?: string; // Single image mode
+  images?: string[]; // Multi-image mode
+  initialIndex?: number;
   alt?: string;
-  className?: string; // For customized sizing/positioning from parent
+  className?: string;
 }
 
-const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = '' }) => {
+const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0, alt = '', className = '' }) => {
+  // Determine mode
+  const isMultiMode = !!images && images.length > 0;
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+
+  // Resolve current source
+  const currentSrc = isMultiMode ? images![activeIndex] : src || '';
+
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isToolbarHidden, setIsToolbarHidden] = useState(false);
+  const [isTagVisible, setIsTagVisible] = useState(true);
+  const tagHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null); // To store current state before switch
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Store view state for each image: { [src]: { zoom, rotation, pan } }
   const viewStates = useRef<Record<string, { zoom: number, rotation: number, pan: { x: number, y: number } }>>({});
-  const prevSrc = useRef<string>(src);
+  const prevSrc = useRef<string>(currentSrc);
+  const infoRef = useRef<{ zoom: number, rotation: number, pan: { x: number, y: number } }>({ zoom: 1, rotation: 0, pan: { x: 0, y: 0 } });
 
-  // Ref to hold the *current* state values, updated on every render
-  const currentState = useRef({ zoom: 1, rotation: 0, pan: { x: 0, y: 0 } });
-
-  // Sync state to ref
+  // Sync ref with state
   useEffect(() => {
-    currentState.current = { zoom, rotation, pan };
+    infoRef.current = { zoom, rotation, pan };
   }, [zoom, rotation, pan]);
 
-  // Overwrite the logic to use the ref for saving
+  // Handle navigation reset/restore logic
   useEffect(() => {
-    // When src changes:
-    // 1. Save PREVIOUS image state
-    // Only save if prevSrc.current is valid (not the initial empty string or first render)
-    if (prevSrc.current) {
-      viewStates.current[prevSrc.current] = currentState.current;
+    // 1. Save state for PREVIOUS source
+    if (prevSrc.current && prevSrc.current !== currentSrc) {
+      viewStates.current[prevSrc.current] = infoRef.current;
     }
 
-    // 2. Load NEW image state
-    const savedState = viewStates.current[src];
-    if (savedState) {
-      setZoom(savedState.zoom);
-      setRotation(savedState.rotation);
-      setPan(savedState.pan);
-      // Update current ref immediately so we don't overwrite with old values if a render happens
-      currentState.current = savedState;
-    } else {
-      setZoom(1);
-      setRotation(0);
-      setPan({ x: 0, y: 0 });
-      currentState.current = { zoom: 1, rotation: 0, pan: { x: 0, y: 0 } };
+    // 2. Load state for NEW source
+    if (prevSrc.current !== currentSrc) {
+      const saved = viewStates.current[currentSrc];
+      if (saved) {
+        setZoom(saved.zoom);
+        setRotation(saved.rotation);
+        setPan(saved.pan);
+      } else {
+        setZoom(1);
+        setRotation(0);
+        setPan({ x: 0, y: 0 });
+      }
     }
 
-    prevSrc.current = src;
-  }, [src]);
+    prevSrc.current = currentSrc;
+  }, [currentSrc]);
+
+  // Reset index if image list changes entirely
+  useEffect(() => {
+    if (isMultiMode && images) {
+      if (activeIndex >= images.length) {
+        setActiveIndex(0);
+      }
+    }
+  }, [images, isMultiMode, activeIndex]);
+
 
   useEffect(() => {
     if (zoom <= 1) {
@@ -64,7 +81,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
   // Handle wheel for zooming
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      // Only capture wheel if we are hovering this component
       e.preventDefault();
       e.stopPropagation();
 
@@ -87,6 +103,49 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
     };
   }, []);
 
+  // Auto-hide tag logic (hide tag when toolbar is visible after delay)
+  const startTagHideTimer = () => {
+    setIsTagVisible(true);
+    if (tagHideTimeoutRef.current) {
+      clearTimeout(tagHideTimeoutRef.current);
+    }
+    tagHideTimeoutRef.current = setTimeout(() => {
+      setIsTagVisible(false);
+    }, 2500);
+  };
+
+  // Start tag hide timer when toolbar is shown
+  useEffect(() => {
+    if (!isToolbarHidden) {
+      startTagHideTimer();
+    } else {
+      // When toolbar is hidden, always show the tag
+      setIsTagVisible(true);
+      if (tagHideTimeoutRef.current) {
+        clearTimeout(tagHideTimeoutRef.current);
+      }
+    }
+    return () => {
+      if (tagHideTimeoutRef.current) {
+        clearTimeout(tagHideTimeoutRef.current);
+      }
+    };
+  }, [isToolbarHidden]);
+
+  // Handle mouse movement - show tag temporarily when toolbar is visible
+  const handleMouseMove = () => {
+    if (!isToolbarHidden) {
+      startTagHideTimer();
+    }
+  };
+
+  // Handle touch - show tag temporarily when toolbar is visible  
+  const handleTouchStart = () => {
+    if (!isToolbarHidden) {
+      startTagHideTimer();
+    }
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (zoom > 1) {
       e.preventDefault();
@@ -102,14 +161,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
       const rawX = e.clientX - dragStart.current.x;
       const rawY = e.clientY - dragStart.current.y;
 
-      // Calculate boundaries
       const viewportW = containerRef.current.clientWidth;
       const viewportH = containerRef.current.clientHeight;
 
       let imgW = imgRef.current.clientWidth;
       let imgH = imgRef.current.clientHeight;
 
-      // If rotated 90 or 270 degrees, swap dimensions for calculation
       if (rotation % 180 !== 0) {
         [imgW, imgH] = [imgH, imgW];
       }
@@ -134,78 +191,156 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, alt = '', className = ''
     setZoom(1);
     setRotation(0);
     setPan({ x: 0, y: 0 });
-    // Clear saved state for this image so it resets permanently if we navigate away and back
-    delete viewStates.current[src];
+    delete viewStates.current[currentSrc];
   };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isMultiMode || !images) return;
+    setActiveIndex(prev => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isMultiMode || !images) return;
+    setActiveIndex(prev => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
 
   return (
     <div
       ref={containerRef}
       className={`relative w-full h-full flex items-center justify-center overflow-hidden touch-none bg-slate-100 ${className}`}
+      onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
     >
-      <img
-        ref={imgRef}
-        src={src}
-        className={`object-contain transition-transform duration-75 ease-out ${isDragging ? 'cursor-grabbing' : zoom > 1 ? 'cursor-grab' : ''
-          } ${rotation % 180 !== 0
-            ? 'max-w-[80vh] max-h-[80vw]' // Adjusted for potentially smaller containers than full screen? Or keep similar logic? 
-            // Actually, in specific containers, 100% of container is better.
-            : 'max-w-full max-h-full'
-          }`}
-        style={{
-          // When rotated, we need to ensure it fits. 
-          // In a flex container max-w-full usually works relative to parent.
-          // But rotation swaps axis so we might need logic.
-          // For now keeping simpler logic:
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          touchAction: 'none'
+      {currentSrc ? (
+        <img
+          ref={imgRef}
+          src={currentSrc}
+          className={`object-contain transition-transform duration-75 ease-out ${isDragging ? 'cursor-grabbing' : zoom > 1 ? 'cursor-grab' : ''
+            } ${rotation % 180 !== 0
+              ? 'max-w-[80vh] max-h-[80vw]'
+              : 'max-w-full max-h-full'
+            }`}
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            touchAction: 'none'
+          }}
+          alt={alt}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          draggable={false}
+        />
+      ) : (
+        <div className="text-slate-400">No Image</div>
+      )}
+
+      {/* Navigation Arrows (Multi Mode Only) */}
+      {isMultiMode && images!.length > 1 && (
+        <>
+          <button
+            onClick={handlePrev}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-slate-900/40 text-white/70 rounded-full hover:bg-slate-900/60 hover:text-white transition-all backdrop-blur-sm z-20"
+          >
+            <ChevronRight size={24} />
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-slate-900/40 text-white/70 rounded-full hover:bg-slate-900/60 hover:text-white transition-all backdrop-blur-sm z-20"
+          >
+            <ChevronLeft size={24} />
+          </button>
+
+          {/* Pagination Dots */}
+          <div
+            className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-slate-900/50 backdrop-blur-md rounded-full z-20 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {images!.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveIndex(idx);
+                }}
+                className={`w-2 h-2 rounded-full transition-all ${idx === activeIndex ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/70'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Toggle Tag (Show/Hide) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsToolbarHidden(!isToolbarHidden);
         }}
-        alt={alt}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        draggable={false}
-      />
+        className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/80 backdrop-blur-xl px-4 py-1 rounded-full border border-white/10 shadow-lg text-white/70 hover:text-white transition-all flex items-center gap-1 text-xs font-bold ${isToolbarHidden
+          ? 'opacity-100'
+          : isTagVisible
+            ? 'opacity-100'
+            : 'opacity-0 pointer-events-none'
+          }`}
+      >
+        {isToolbarHidden ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        {isToolbarHidden ? 'הצג' : 'הסתר'}
+      </button>
 
       {/* Floating Toolbar */}
       <div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-900/80 backdrop-blur-xl p-2 pr-4 rounded-full border border-white/10 shadow-2xl z-30"
+        className={`absolute bottom-12 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ${isToolbarHidden ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
+          }`}
         onClick={(e) => e.stopPropagation()}
+        onMouseEnter={() => {
+          // Show tag while hovering over toolbar
+          if (tagHideTimeoutRef.current) clearTimeout(tagHideTimeoutRef.current);
+          setIsTagVisible(true);
+        }}
+        onMouseLeave={() => {
+          // Restart tag hide timer when leaving toolbar
+          startTagHideTimer();
+        }}
       >
-        <button
-          onClick={handleReset}
-          className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-          title="Reset View"
-        >
-          <Redo2 size={18} />
-        </button>
-        <div className="w-px h-5 bg-white/20 mx-1"></div>
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 shadow-2xl">
+          <button
+            onClick={handleReset}
+            className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            title="Reset View"
+          >
+            <Redo2 size={16} />
+          </button>
+          <div className="w-px h-4 bg-white/20"></div>
 
-        <button
-          onClick={() => setZoom(Math.max(1, zoom - 0.5))}
-          className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut size={18} />
-        </button>
-        <span className="text-white font-mono font-bold w-10 text-center text-xs">{Math.round(zoom * 100)}%</span>
-        <button
-          onClick={() => setZoom(Math.min(3, zoom + 0.5))}
-          className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn size={18} />
-        </button>
-        <div className="w-px h-5 bg-white/20 mx-1"></div>
-        <button
-          onClick={() => setRotation(prev => prev + 90)}
-          className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-          title="Rotate"
-        >
-          <RotateCw size={18} />
-        </button>
+          <button
+            onClick={() => setZoom(Math.max(1, zoom - 0.5))}
+            className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut size={16} />
+          </button>
+          <span className="text-white font-mono font-bold w-10 text-center text-xs">{Math.round(zoom * 100)}%</span>
+          <button
+            onClick={() => setZoom(Math.min(3, zoom + 0.5))}
+            className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn size={16} />
+          </button>
+          <div className="w-px h-4 bg-white/20"></div>
+          <button
+            onClick={() => setRotation(prev => prev + 90)}
+            className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            title="Rotate"
+          >
+            <RotateCw size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
