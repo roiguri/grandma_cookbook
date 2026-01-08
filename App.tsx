@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
-  BookOpen, ArrowRight, LayoutGrid, List, Loader2, AlertCircle, X,
+  BookOpen, ArrowRight, ArrowLeft, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
   ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus
 } from 'lucide-react';
@@ -500,14 +500,13 @@ const App: React.FC = () => {
 
       <main className={`max-w-5xl mx-auto px-4 pt-8 ${state === AppState.REVIEW ? 'hidden' : ''}`}>
         {state === AppState.IDLE && (
-          <div className="text-center py-8 sm:py-16">
-            <div className="mb-4 sm:mb-6 inline-block p-3 sm:p-4 bg-orange-100 rounded-[2rem] text-orange-600">
-              <UtensilsCrossed className="w-8 h-8 sm:w-12 sm:h-12" />
+          <div className="text-center py-4 sm:py-16">
+            <div className="mb-3 sm:mb-6 inline-block p-2 sm:p-4 bg-orange-100 rounded-[2rem] text-orange-600">
+              <UtensilsCrossed className="w-6 h-6 sm:w-12 sm:h-12" />
             </div>
-            <h2 className="text-3xl sm:text-5xl font-black mb-3 sm:mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
-            <p className="text-slate-500 mb-6 sm:mb-14 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-medium">
-              <span className="sm:hidden">הפכו תמונות למתכונים דיגיטליים בקלות.</span>
-              <span className="hidden sm:inline">צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.</span>
+            <h2 className="text-2xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
+            <p className="hidden sm:block text-slate-500 mb-6 sm:mb-14 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-medium">
+              צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.
             </p>
             <ImageUploader key={uploaderKey} onImagesSelected={handleImagesSelect} />
 
@@ -520,7 +519,7 @@ const App: React.FC = () => {
                   </div>
                   <button onClick={() => setState(AppState.HISTORY)} className="text-orange-600 font-black flex items-center gap-2 group">
                     כל המתכונים
-                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
                   </button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
