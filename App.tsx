@@ -550,21 +550,28 @@ const App: React.FC = () => {
                   <p className="text-slate-500 font-medium text-sm sm:text-base">ניהול וארגון המתכונים שלך</p>
                 </div>
                 <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
-                  <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex gap-2 w-full sm:w-auto items-start">
                     {/* Search Input */}
-                    <div className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2 flex-grow sm:flex-grow-0 sm:w-64 border border-transparent focus-within:border-orange-300 focus-within:bg-white transition-all">
-                      <Search size={20} className="text-slate-400 shrink-0" />
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="חיפוש מתכונים..."
-                        className="bg-transparent border-none outline-none text-slate-700 font-bold placeholder:text-slate-400 placeholder:font-medium w-full"
-                      />
+                    <div className="flex flex-col gap-1 flex-grow sm:flex-grow-0 sm:w-64">
+                      <div className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2 w-full border border-transparent focus-within:border-orange-300 focus-within:bg-white transition-all">
+                        <Search size={20} className="text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="חיפוש מתכונים..."
+                          className="bg-transparent border-none outline-none text-slate-700 font-bold placeholder:text-slate-400 placeholder:font-medium w-full"
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
                       {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
-                          <X size={16} />
-                        </button>
+                        <span className="text-xs text-slate-400 font-bold px-2 animate-in fade-in slide-in-from-top-1">
+                          {filteredRecipes.length} תוצאות
+                        </span>
                       )}
                     </div>
 
