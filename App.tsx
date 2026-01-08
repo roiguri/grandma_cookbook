@@ -371,9 +371,9 @@ const App: React.FC = () => {
         <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
           <div className="flex items-center gap-1.5 shrink-0"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
           {saved.systemComments && (
-            <div className={`flex items-center gap-1.5 text-blue-500 ${isLibraryCompact ? '' : 'min-w-0'}`} title={saved.systemComments}>
+            <div className="flex items-center gap-1.5 text-blue-500 min-w-0" title={saved.systemComments}>
               <MessageSquare size={isLibraryCompact ? 14 : 16} className="shrink-0" />
-              {!isLibraryCompact && <span className="truncate">{saved.systemComments}</span>}
+              <span className="truncate">{saved.systemComments}</span>
             </div>
           )}
         </div>
