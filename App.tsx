@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
-import { Recipe, AppState, SavedRecipe, RECIPE_CATEGORIES, AnalysisJob, ReviewStatus, InstructionPhase } from './types';
+import { Recipe, AppState, SavedRecipe, DEFAULT_RECIPE_CATEGORIES, AnalysisJob, ReviewStatus, InstructionPhase } from './types';
 import RecipeDisplay from './components/RecipeDisplay';
 import RecipeForm from './components/RecipeForm';
 import ImageUploader from './components/ImageUploader';
@@ -57,6 +57,22 @@ const App: React.FC = () => {
   // Review Mode State
   const [reviewFilter, setReviewFilter] = useState<'all' | 'unreviewed'>('unreviewed');
   const [reviewStartIndex, setReviewStartIndex] = useState(0);
+
+  // Dynamic Categories
+  const [categories, setCategories] = useState<string[]>(DEFAULT_RECIPE_CATEGORIES);
+
+  useEffect(() => {
+    // Subscribe to dynamic categories
+    const unsubscribe = dbService.subscribeToCategories((list) => {
+      if (list && list.length > 0) {
+        setCategories(list);
+      } else {
+        // Fallback to default if DB is empty
+        setCategories(DEFAULT_RECIPE_CATEGORIES);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const recipesForReview = useMemo(() => {
     if (reviewFilter === 'unreviewed') {
@@ -124,7 +140,7 @@ const App: React.FC = () => {
         base64Array.map(img => compressImage(img, 1200, 1200))
       );
 
-      const result = await analyzeRecipeImage(compressedImages);
+      const result = await analyzeRecipeImage(compressedImages, categories);
 
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'completed', recipe: result, images: compressedImages } : j));
 
@@ -492,6 +508,26 @@ const App: React.FC = () => {
             // Update local state to reflect changes immediately
             setSavedRecipes(prev => prev.map(r => r.id === id ? { ...r, ...updates, recipe: updates.recipe || r.recipe } : r));
           }}
+          categories={categories}
+          onAddCategory={async (newCat) => {
+            const newCategories = [...categories, newCat];
+            await dbService.updateCategories(newCategories);
+            setCategories(newCategories);
+            addNotification(`קטגוריה "${newCat}" נוספה!`, 'success');
+          }}
+          onDeleteCategory={async (catToDelete) => {
+            // Check if category is used
+            const usedCount = savedRecipes.filter(r => r.recipe.category === catToDelete).length;
+            if (usedCount > 0) {
+              addNotification(`לא ניתן למחוק: קטגוריה זו בשימוש ב-${usedCount} מתכונים. העבר אותם לקטגוריה אחרת קודם.`, 'info');
+              return;
+            }
+
+            const newCategories = categories.filter(c => c !== catToDelete);
+            await dbService.updateCategories(newCategories);
+            setCategories(newCategories);
+            addNotification(`קטגוריה "${catToDelete}" הוסרה`, 'success');
+          }}
         />
       )}
 
@@ -716,8 +752,8 @@ const App: React.FC = () => {
               ) : (
                 (Object.entries(groupedRecipes) as [string, SavedRecipe[]][])
                   .sort((a, b) => {
-                    const idxA = RECIPE_CATEGORIES.indexOf(a[0]);
-                    const idxB = RECIPE_CATEGORIES.indexOf(b[0]);
+                    const idxA = DEFAULT_RECIPE_CATEGORIES.indexOf(a[0]);
+                    const idxB = DEFAULT_RECIPE_CATEGORIES.indexOf(b[0]);
                     return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
                   })
                   .map(([cat, items]) => {
@@ -894,6 +930,27 @@ const App: React.FC = () => {
                 <RecipeForm
                   recipe={recipe}
                   onChange={setRecipe}
+                  categories={categories}
+                  onAddCategory={async (newCat) => {
+                    // Update DB with new category
+                    const newCategories = [...categories, newCat];
+                    await dbService.updateCategories(newCategories);
+                    setCategories(newCategories); // Optimistic update
+                    addNotification(`קטגוריה "${newCat}" נוספה!`, 'success');
+                  }}
+                  onDeleteCategory={async (catToDelete) => {
+                    // Check if category is used
+                    const usedCount = savedRecipes.filter(r => r.recipe.category === catToDelete).length;
+                    if (usedCount > 0) {
+                      addNotification(`לא ניתן למחוק: קטגוריה זו בשימוש ב-${usedCount} מתכונים. העבר אותם לקטגוריה אחרת קודם.`, 'info');
+                      return;
+                    }
+
+                    const newCategories = categories.filter(c => c !== catToDelete);
+                    await dbService.updateCategories(newCategories);
+                    setCategories(newCategories);
+                    addNotification(`קטגוריה "${catToDelete}" הוסרה`, 'success');
+                  }}
                 />
               ) : (
                 <RecipeDisplay recipe={recipe} />

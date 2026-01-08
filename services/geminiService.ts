@@ -1,12 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Recipe, RECIPE_CATEGORIES } from "../types";
+import { Recipe } from "../types";
 import { getMimeType, getBase64Data } from "./imageUtils";
 
+// Initialize Gemini Client (ONLY used in local dev)
 // Initialize Gemini Client (ONLY used in local dev)
 const localApiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const ai = localApiKey ? new GoogleGenAI({ apiKey: localApiKey }) : null;
 
-export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe> => {
+export const analyzeRecipeImage = async (base64Images: string[], availableCategories: string[] = []): Promise<Recipe> => {
   // ---------------------------------------------------------
   // PATH 1: PRODUCTION (Netlify Function)
   // ---------------------------------------------------------
@@ -21,7 +22,7 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
           'Content-Type': 'application/json',
           // Optional: Add Auth token here if we implemented strict server-side auth check
         },
-        body: JSON.stringify({ images: base64Images })
+        body: JSON.stringify({ images: base64Images, availableCategories })
       });
 
       if (!response.ok) {
@@ -44,13 +45,15 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
     throw new Error("Missing VITE_GEMINI_API_KEY for local development");
   }
 
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-1.5-flash"; // Using stable model instead of experimental preview if possible, or stick to flash
+
+  const categoriesList = availableCategories.length > 0 ? availableCategories.join(', ') : "קבוצות כלליות";
 
   const systemInstruction = `
     אתה מומחה קולינרי הדובר עברית רהוטה וטבעית. תפקידך לנתח תמונות של דפי מתכונים ולהפיק מתכון מלא ומסודר בעברית הנאמן למקור ככל הניתן.
     
     דגשים קריטיים:
-    1. סיווג המתכון: בחר קטגוריה מתאימה מהרשימה: ${RECIPE_CATEGORIES.join(', ')}.
+    1. סיווג המתכון: בחר קטגוריה מתאימה אך ורק מהרשימה הבאה: ${categoriesList}. אם אין התאמה מושלמת, בחר את הקרובה ביותר או "אחר".
     2. חלוקת מצרכים: חלק את המצרכים לפי מרכיבי המנה (למשל: "לבצק", "למילוי", "לרוטב") כפי שמופיע או משתמע מהטקסט המקורי.
     3. נאמנות למקור (Strict Fidelity): אל תמציא שלבים, מרכיבים או טיפים שאינם מופיעים בתמונה. היצמד לתוכן המוצג במדויק.
     4. חלוקה לשלבים (Instruction Phases): אם המתכון מורכב מחלקים ברורים (למשל: "הכנת הבצק", "הכנת המילוי"), חלק גם את אופן ההכנה לחלקים אלו. אם המתכון פשוט, השתמש בחלק אחד בשם "אופן ההכנה". אל תמציא חלוקה אם אינה קיימת.
@@ -82,7 +85,7 @@ export const analyzeRecipeImage = async (base64Images: string[]): Promise<Recipe
         type: Type.OBJECT,
         properties: {
           title: { type: Type.STRING, description: "שם המתכון" },
-          category: { type: Type.STRING, description: "קטגוריה" },
+          category: { type: Type.STRING, description: `אחת מהקטגוריות: ${categoriesList}` },
           prepTime: { type: Type.STRING, description: "זמן הכנה" },
           categories: {
             type: Type.ARRAY,

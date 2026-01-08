@@ -50,7 +50,7 @@ export enum AppState {
   ERROR = 'ERROR'
 }
 
-export const RECIPE_CATEGORIES = [
+export const DEFAULT_RECIPE_CATEGORIES = [
   'מנות עיקריות',
   'מרקים',
   'ארוחת בוקר',

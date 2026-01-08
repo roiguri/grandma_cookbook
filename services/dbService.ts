@@ -103,6 +103,35 @@ export const dbService = {
       console.error("Error deleting recipe:", error);
       throw error;
     }
+  },
+
+  // --- Category Management ---
+
+  // Get categories from 'settings/categories' or return empty (caller handles defaults)
+  async getCategories(): Promise<string[]> {
+    try {
+      const docRef = doc(db, 'settings', 'categories');
+      const unsubscribe = onSnapshot(docRef, () => { });
+      return [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  subscribeToCategories(callback: (categories: string[]) => void) {
+    const docRef = doc(db, 'settings', 'categories');
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback(docSnap.data().list || []);
+      } else {
+        callback([]); // Caller should handle default if empty
+      }
+    });
+  },
+
+  async updateCategories(newCategories: string[]): Promise<void> {
+    const docRef = doc(db, 'settings', 'categories');
+    await setDoc(docRef, { list: newCategories }, { merge: true });
   }
 };
 

@@ -12,9 +12,12 @@ interface ReviewModeProps {
   initialIndex?: number;
   onExit: () => void;
   onUpdateRecipe: (id: string, updates: Partial<SavedRecipe>) => void; // For optimistic updates or just callback
+  categories: string[];
+  onAddCategory: (category: string) => Promise<void>;
+  onDeleteCategory: (category: string) => Promise<void>;
 }
 
-const ReviewMode: React.FC<ReviewModeProps> = ({ recipes, initialIndex = 0, onExit, onUpdateRecipe }) => {
+const ReviewMode: React.FC<ReviewModeProps> = ({ recipes, initialIndex = 0, onExit, onUpdateRecipe, categories, onAddCategory, onDeleteCategory }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [currentRecipe, setCurrentRecipe] = useState<SavedRecipe | null>(null);
   const [editedRecipe, setEditedRecipe] = useState<Recipe | null>(null);
@@ -184,6 +187,9 @@ const ReviewMode: React.FC<ReviewModeProps> = ({ recipes, initialIndex = 0, onEx
             <RecipeForm
               recipe={editedRecipe}
               onChange={handleRecipeChange}
+              categories={categories}
+              onAddCategory={onAddCategory}
+              onDeleteCategory={onDeleteCategory}
             />
           </div>
         </div>
