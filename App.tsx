@@ -504,9 +504,10 @@ const App: React.FC = () => {
             <div className="mb-4 sm:mb-6 inline-block p-3 sm:p-4 bg-orange-100 rounded-[2rem] text-orange-600">
               <UtensilsCrossed className="w-8 h-8 sm:w-12 sm:h-12" />
             </div>
-            <h2 className="text-3xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
-            <p className="text-slate-500 mb-8 sm:mb-14 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-medium">
-              צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.
+            <h2 className="text-3xl sm:text-5xl font-black mb-3 sm:mb-6 tracking-tight text-slate-900">הופכים תמונה למתכון ברגע</h2>
+            <p className="text-slate-500 mb-6 sm:mb-14 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-medium">
+              <span className="sm:hidden">הפכו תמונות למתכונים דיגיטליים בקלות.</span>
+              <span className="hidden sm:inline">צלמו דפי מתכון ישנים, ספרי בישול או אפילו רשימת מצרכים. הבינה המלאכותית שלנו תהפוך אותם למתכון דיגיטלי מסודר לפי קטגוריות.</span>
             </p>
             <ImageUploader key={uploaderKey} onImagesSelected={handleImagesSelect} />
 
