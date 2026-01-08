@@ -4,7 +4,7 @@ import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
   BookOpen, ArrowLeft, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
-  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus, Maximize
+  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus, Maximize, Search
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
@@ -18,6 +18,7 @@ import LoginScreen from './components/LoginScreen';
 import FullscreenImageViewer from './components/FullscreenImageViewer';
 import ConfirmationModal from './components/ConfirmationModal';
 import ReviewMode from './components/ReviewMode';
+import { useRecipeLibrary } from './src/hooks/useRecipeLibrary';
 
 
 const STORAGE_KEY = 'recipe_genie_saved_recipes';
@@ -80,28 +81,7 @@ const App: React.FC = () => {
     [savedRecipes, activeSavedId]
   );
 
-  const filteredRecipes = useMemo(() => {
-    switch (libraryTab) {
-      case 'review':
-        return savedRecipes.filter(r => r.status === 'unreviewed');
-      case 'favorites':
-        return savedRecipes.filter(r => r.isFavorite);
-      case 'approved':
-        return savedRecipes.filter(r => r.status === 'reviewed');
-      default:
-        return savedRecipes.filter(r => r.status === 'reviewed');
-    }
-  }, [savedRecipes, libraryTab]);
-
-  const groupedRecipes = useMemo(() => {
-    const groups: Record<string, SavedRecipe[]> = {};
-    filteredRecipes.forEach(r => {
-      const cat = r.recipe.category || 'אחר';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(r);
-    });
-    return groups;
-  }, [filteredRecipes]);
+  const { searchQuery, setSearchQuery, filteredRecipes, groupedRecipes } = useRecipeLibrary(savedRecipes, libraryTab);
 
   const activeJobsCount = useMemo(() => jobs.filter(j => j.status === 'processing').length, [jobs]);
 
@@ -570,9 +550,26 @@ const App: React.FC = () => {
                   <p className="text-slate-500 font-medium text-sm sm:text-base">ניהול וארגון המתכונים שלך</p>
                 </div>
                 <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    {/* Search Input */}
+                    <div className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3 py-2 flex-grow sm:flex-grow-0 sm:w-64 border border-transparent focus-within:border-orange-300 focus-within:bg-white transition-all">
+                      <Search size={20} className="text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="חיפוש מתכונים..."
+                        className="bg-transparent border-none outline-none text-slate-700 font-bold placeholder:text-slate-400 placeholder:font-medium w-full"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+
                     {/* View Mode Toggle */}
-                    <div className="flex bg-slate-200 p-1 rounded-2xl">
+                    <div className="flex bg-slate-200 p-1 rounded-2xl shrink-0">
                       <button
                         onClick={() => setViewMode('category')}
                         className={`p-2 sm:px-3 rounded-xl transition-all flex items-center gap-2 ${viewMode === 'category' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
@@ -589,7 +586,7 @@ const App: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="flex bg-slate-200 p-1 rounded-2xl">
+                    <div className="flex bg-slate-200 p-1 rounded-2xl shrink-0">
                       <button
                         onClick={() => setIsLibraryCompact(false)}
                         className={`p-2 sm:px-3 rounded-xl transition-all flex-1 sm:flex-none flex justify-center ${!isLibraryCompact ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
