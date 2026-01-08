@@ -2,10 +2,6 @@
 
 A personal application designed to digitize, manage, and review recipes using the power of Google Gemini AI.
 
-## Access
-
-This is a personal application. Access is restricted to authorized users only. Authentication is verified against an allowed email list via the `VITE_ALLOWED_USER_EMAIL` environment variable.
-
 ## Key Features
 
 - **AI-Powered Digitization**: Instantly extract recipe details, ingredients, and steps from images using Google Gemini.
