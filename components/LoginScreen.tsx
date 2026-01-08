@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChefHat, ArrowRight } from 'lucide-react';
+import { ChefHat, ArrowLeft } from 'lucide-react';
 import { signInWithGoogle } from '../services/authService';
 
 const LoginScreen: React.FC = () => {
@@ -29,7 +29,7 @@ const LoginScreen: React.FC = () => {
         >
           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 bg-white rounded-full p-0.5" />
           <span>התחבר באמצעות Google</span>
-          <ArrowRight className="group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft className="group-hover:-translate-x-1 transition-transform" />
         </button>
 
         <p className="mt-8 text-xs text-slate-400 font-bold uppercase tracking-widest">
