@@ -9,8 +9,9 @@ interface RecipeDisplayProps {
 
 const RecipeDisplay: React.FC<RecipeDisplayProps> = ({ recipe }) => {
   return (
-    <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl shadow-slate-200/50 border border-slate-100 p-10 sm:p-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+    <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl shadow-slate-200/50 border border-slate-100 h-full flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
+      <div className="overflow-y-auto custom-scrollbar p-10 sm:p-16 flex-grow">
       {/* Header */}
       <div className="mb-14 text-right">
         <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-6 py-2 rounded-full text-xs font-black mb-6 uppercase tracking-widest shadow-sm ring-1 ring-orange-200/50">
@@ -128,6 +129,7 @@ const RecipeDisplay: React.FC<RecipeDisplayProps> = ({ recipe }) => {
 
       <div className="mt-20 pt-10 border-t border-slate-100 text-center">
         <p className="text-slate-400 font-black italic text-sm">בתאבון! נוצר על ידי Recipe Genie</p>
+      </div>
       </div>
     </div>
   );
