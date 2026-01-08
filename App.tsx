@@ -370,9 +370,12 @@ const App: React.FC = () => {
       <div className={`${isLibraryCompact ? 'flex-grow min-w-0' : 'p-6 sm:p-8 flex flex-col gap-3 sm:gap-4'}`}>
         <h4 className={`font-black text-slate-800 leading-tight group-hover:text-orange-600 transition-colors ${isLibraryCompact ? 'truncate text-base sm:text-lg' : 'line-clamp-2 text-xl sm:text-2xl min-h-[3.5rem] sm:min-h-[4rem]'}`}>{saved.recipe.title}</h4>
         <div className={`flex items-center gap-4 text-slate-500 font-bold ${isLibraryCompact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
-          <div className="flex items-center gap-1.5"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
-          {saved.systemComments && !isLibraryCompact && (
-            <div className="flex items-center gap-1.5 text-blue-500"><MessageSquare size={16} /> הערת מערכת</div>
+          <div className="flex items-center gap-1.5 shrink-0"><Clock size={isLibraryCompact ? 14 : 18} className="text-orange-600" /> {saved.recipe.prepTime}</div>
+          {saved.systemComments && (
+            <div className="flex items-center gap-1.5 text-blue-500 min-w-0" title={saved.systemComments}>
+              <MessageSquare size={isLibraryCompact ? 14 : 16} className="shrink-0" />
+              <span className="truncate">{saved.systemComments}</span>
+            </div>
           )}
         </div>
       </div>
