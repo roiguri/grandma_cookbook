@@ -925,7 +925,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="flex-grow lg:h-[calc(100vh-140px)] lg:overflow-y-auto custom-scrollbar lg:sticky lg:top-24 pb-8 pl-4">
+            <div className="flex-grow lg:h-[calc(100vh-140px)] lg:sticky lg:top-24 pb-8 pl-4 flex flex-col">
               {state === AppState.EDITING ? (
                 <RecipeForm
                   recipe={recipe}
