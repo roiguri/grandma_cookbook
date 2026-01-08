@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AI Recipe Manager
 
-# Run and deploy your AI Studio app
+A personal application designed to digitize, manage, and review recipes using the power of Google Gemini AI.
 
-This contains everything you need to run your app locally.
+## Access
 
-View your app in AI Studio: https://ai.studio/apps/drive/1Q5ZbL5JCOE00DIoVGYE3OIsNyZSfgtrj
+This is a personal application. Access is restricted to authorized users only. Authentication is verified against an allowed email list via the `VITE_ALLOWED_USER_EMAIL` environment variable.
 
-## Run Locally
+## Key Features
 
-**Prerequisites:**  Node.js
+- **AI-Powered Digitization**: Instantly extract recipe details, ingredients, and steps from images using Google Gemini.
+- **Review Workflow**: A dedicated review mode to verify and edit AI-extracted data before finalizing recipes.
+- **Library Management**: Organize recipes into "Review" (unreviewed), "Approved" (reviewed), and "Favorites".
+- **Mobile-First Experience**: Fully responsive design with PWA support for installation on mobile devices.
+- **Advanced Image Viewing**: Custom image viewer supporting multi-touch pinch zoom and double-tap interactions.
 
+## Tech Stack
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Frontend**: React, Vite, TypeScript
+- **Styling**: Tailwind CSS, Lucide React
+- **Backend & Auth**: Firebase (Authentication, Firestore, Storage)
+- **AI**: Google Gemini API
+- **Deployment**: Netlify
