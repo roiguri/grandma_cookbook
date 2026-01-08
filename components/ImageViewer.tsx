@@ -10,11 +10,9 @@ interface ImageViewerProps {
 }
 
 const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0, alt = '', className = '' }) => {
-  // Determine mode
   const isMultiMode = !!images && images.length > 0;
   const [activeIndex, setActiveIndex] = useState(initialIndex);
 
-  // Resolve current source
   const currentSrc = isMultiMode ? images![activeIndex] : src || '';
 
   const [zoom, setZoom] = useState(1);
@@ -37,19 +35,16 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   const prevSrc = useRef<string>(currentSrc);
   const infoRef = useRef<{ zoom: number, rotation: number, pan: { x: number, y: number } }>({ zoom: 1, rotation: 0, pan: { x: 0, y: 0 } });
 
-  // Sync ref with state
   useEffect(() => {
     infoRef.current = { zoom, rotation, pan };
   }, [zoom, rotation, pan]);
 
   // Handle navigation reset/restore logic
   useEffect(() => {
-    // 1. Save state for PREVIOUS source
     if (prevSrc.current && prevSrc.current !== currentSrc) {
       viewStates.current[prevSrc.current] = infoRef.current;
     }
 
-    // 2. Load state for NEW source
     if (prevSrc.current !== currentSrc) {
       const saved = viewStates.current[currentSrc];
       if (saved) {
@@ -118,7 +113,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
     }, 2500);
   };
 
-  // Start tag hide timer when toolbar is shown
   useEffect(() => {
     if (!isToolbarHidden) {
       startTagHideTimer();
@@ -136,14 +130,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
     };
   }, [isToolbarHidden]);
 
-  // Handle mouse movement - show tag temporarily when toolbar is visible
   const handleMouseMove = () => {
     if (!isToolbarHidden) {
       startTagHideTimer();
     }
   };
 
-  // Handle touch - show tag temporarily when toolbar is visible  
   const handleTouchStart = () => {
     if (!isToolbarHidden) {
       startTagHideTimer();
@@ -247,6 +239,9 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
       setIsDragging(false);
 
       if (tapStart.current.valid && containerRef.current && imgRef.current) {
+        // Invalidate immediate subsequent events claiming to be the same tap
+        tapStart.current.valid = false;
+
         const now = Date.now();
         if (now - lastTapTime.current < 300) {
           e.preventDefault();
@@ -349,7 +344,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
         <div className="text-slate-400">No Image</div>
       )}
 
-      {/* Navigation Arrows (Multi Mode Only) */}
       {isMultiMode && images!.length > 1 && (
         <>
           <button
@@ -365,7 +359,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
             <ChevronLeft size={24} />
           </button>
 
-          {/* Pagination Dots */}
           <div
             className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-slate-900/50 backdrop-blur-md rounded-full z-20 shadow-lg"
             onClick={(e) => e.stopPropagation()}
@@ -384,7 +377,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
         </>
       )}
 
-      {/* Toggle Tag (Show/Hide) */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -401,7 +393,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
         {isToolbarHidden ? 'הצג' : 'הסתר'}
       </button>
 
-      {/* Floating Toolbar */}
       <div
         className={`absolute bottom-12 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ${isToolbarHidden ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
           }`}
@@ -416,7 +407,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
           startTagHideTimer();
         }}
       >
-        {/* Toolbar */}
         <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 shadow-2xl">
           <button
             onClick={handleReset}
