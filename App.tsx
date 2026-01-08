@@ -4,7 +4,7 @@ import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
   BookOpen, ArrowLeft, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
-  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus
+  ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus, Maximize
 } from 'lucide-react';
 import { analyzeRecipeImage } from './services/geminiService';
 import { compressImage } from './services/imageUtils';
@@ -52,6 +52,17 @@ const App: React.FC = () => {
   // Library view options
   const [isLibraryCompact, setIsLibraryCompact] = useState(false);
   const [collapsedLibraryCats, setCollapsedLibraryCats] = useState<Set<string>>(new Set());
+
+  // Review Mode State
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'unreviewed'>('unreviewed');
+  const [reviewStartIndex, setReviewStartIndex] = useState(0);
+
+  const recipesForReview = useMemo(() => {
+    if (reviewFilter === 'unreviewed') {
+      return savedRecipes.filter(r => r.status === 'unreviewed');
+    }
+    return savedRecipes;
+  }, [savedRecipes, reviewFilter]);
 
   useEffect(() => {
     // Only subscribe if user is logged in
@@ -491,7 +502,8 @@ const App: React.FC = () => {
 
       {state === AppState.REVIEW && (
         <ReviewMode
-          recipes={savedRecipes.filter(r => r.status === 'unreviewed')}
+          recipes={recipesForReview}
+          initialIndex={reviewStartIndex}
           onExit={() => {
             setState(AppState.HISTORY);
             window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -608,7 +620,11 @@ const App: React.FC = () => {
               <div className="flex flex-wrap items-center gap-4 w-full">
                 {savedRecipes.filter(r => r.status === 'unreviewed').length > 0 && (
                   <button
-                    onClick={() => setState(AppState.REVIEW)}
+                    onClick={() => {
+                      setReviewFilter('unreviewed');
+                      setReviewStartIndex(0);
+                      setState(AppState.REVIEW);
+                    }}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-[1.5rem] font-black hover:bg-black transition-all shadow-xl shadow-slate-200 order-first sm:order-last ml-auto animate-in zoom-in-95"
                   >
                     <RefreshCw size={18} className="animate-spin-slow" />
@@ -754,18 +770,33 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                    <div className="space-y-2">
+                      <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                        <button
+                          onClick={() => updateManagementField(activeSavedId, { status: 'unreviewed' })}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'unreviewed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          <RefreshCw size={14} className={activeSavedRecipe.status === 'unreviewed' ? 'animate-spin' : ''} /> לביקורת
+                        </button>
+                        <button
+                          onClick={() => updateManagementField(activeSavedId, { status: 'reviewed' })}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'reviewed' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          <Check size={14} /> מאושר
+                        </button>
+                      </div>
+
                       <button
-                        onClick={() => updateManagementField(activeSavedId, { status: 'unreviewed' })}
-                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'unreviewed' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                        onClick={() => {
+                          setReviewFilter('all');
+                          const index = savedRecipes.findIndex(r => r.id === activeSavedId);
+                          setReviewStartIndex(index !== -1 ? index : 0);
+                          setState(AppState.REVIEW);
+                        }}
+                        className="w-full py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                       >
-                        <RefreshCw size={14} className={activeSavedRecipe.status === 'unreviewed' ? 'animate-spin' : ''} /> לביקורת
-                      </button>
-                      <button
-                        onClick={() => updateManagementField(activeSavedId, { status: 'reviewed' })}
-                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeSavedRecipe.status === 'reviewed' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
-                      >
-                        <Check size={14} /> מאושר
+                        <Maximize size={16} />
+                        כנס למצב ביקורת
                       </button>
                     </div>
 
