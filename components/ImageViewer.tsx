@@ -10,11 +10,9 @@ interface ImageViewerProps {
 }
 
 const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0, alt = '', className = '' }) => {
-  // Determine mode
   const isMultiMode = !!images && images.length > 0;
   const [activeIndex, setActiveIndex] = useState(initialIndex);
 
-  // Resolve current source
   const currentSrc = isMultiMode ? images![activeIndex] : src || '';
 
   const [zoom, setZoom] = useState(1);
@@ -25,6 +23,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   const [isTagVisible, setIsTagVisible] = useState(true);
   const tagHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
+  const evCache = useRef<Array<{ pointerId: number; clientX: number; clientY: number }>>([]);
+  const prevDiff = useRef<number>(-1);
+  const lastTapTime = useRef<number>(0);
+  const tapStart = useRef<{ x: number; y: number; valid: boolean }>({ x: 0, y: 0, valid: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -33,19 +35,16 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   const prevSrc = useRef<string>(currentSrc);
   const infoRef = useRef<{ zoom: number, rotation: number, pan: { x: number, y: number } }>({ zoom: 1, rotation: 0, pan: { x: 0, y: 0 } });
 
-  // Sync ref with state
   useEffect(() => {
     infoRef.current = { zoom, rotation, pan };
   }, [zoom, rotation, pan]);
 
   // Handle navigation reset/restore logic
   useEffect(() => {
-    // 1. Save state for PREVIOUS source
     if (prevSrc.current && prevSrc.current !== currentSrc) {
       viewStates.current[prevSrc.current] = infoRef.current;
     }
 
-    // 2. Load state for NEW source
     if (prevSrc.current !== currentSrc) {
       const saved = viewStates.current[currentSrc];
       if (saved) {
@@ -114,7 +113,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
     }, 2500);
   };
 
-  // Start tag hide timer when toolbar is shown
   useEffect(() => {
     if (!isToolbarHidden) {
       startTagHideTimer();
@@ -132,14 +130,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
     };
   }, [isToolbarHidden]);
 
-  // Handle mouse movement - show tag temporarily when toolbar is visible
   const handleMouseMove = () => {
     if (!isToolbarHidden) {
       startTagHideTimer();
     }
   };
 
-  // Handle touch - show tag temporarily when toolbar is visible  
   const handleTouchStart = () => {
     if (!isToolbarHidden) {
       startTagHideTimer();
@@ -147,16 +143,62 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (zoom > 1) {
+    evCache.current.push({ pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (evCache.current.length === 1) {
+      tapStart.current = { x: e.clientX, y: e.clientY, valid: true };
+    } else {
+      tapStart.current.valid = false;
+    }
+
+    if (evCache.current.length === 2) {
+      const dx = evCache.current[0].clientX - evCache.current[1].clientX;
+      const dy = evCache.current[0].clientY - evCache.current[1].clientY;
+      prevDiff.current = Math.hypot(dx, dy);
+      setIsDragging(false);
+    } else if (evCache.current.length === 1 && zoom > 1) {
       e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
       setIsDragging(true);
       dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (isDragging && zoom > 1 && containerRef.current && imgRef.current) {
+    const index = evCache.current.findIndex(cachedEv => cachedEv.pointerId === e.pointerId);
+    if (index > -1) {
+      evCache.current[index] = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+    }
+
+    if (tapStart.current.valid) {
+      const dist = Math.hypot(e.clientX - tapStart.current.x, e.clientY - tapStart.current.y);
+      if (dist > 10) {
+        tapStart.current.valid = false;
+      }
+    }
+
+    if (evCache.current.length === 2 && containerRef.current && imgRef.current) {
+      e.preventDefault();
+      const dx = evCache.current[0].clientX - evCache.current[1].clientX;
+      const dy = evCache.current[0].clientY - evCache.current[1].clientY;
+      const curDiff = Math.hypot(dx, dy);
+
+      if (prevDiff.current > 0) {
+        const delta = curDiff - prevDiff.current;
+        if (Math.abs(delta) > 0) {
+          setZoom(prev => {
+            const newZoom = Math.min(3, Math.max(1, prev + delta * 0.01));
+            return newZoom;
+          });
+
+          // Separate state update to avoid impure reducer
+          setPan(prevPan => {
+            return prevPan;
+          });
+        }
+      }
+      prevDiff.current = curDiff;
+    } else if (isDragging && zoom > 1 && containerRef.current && imgRef.current) {
       e.preventDefault();
       const rawX = e.clientX - dragStart.current.x;
       const rawY = e.clientY - dragStart.current.y;
@@ -182,8 +224,70 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    setIsDragging(false);
+    const index = evCache.current.findIndex(cachedEv => cachedEv.pointerId === e.pointerId);
+    if (index > -1) {
+      evCache.current.splice(index, 1);
+    }
+
     e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (evCache.current.length < 2) {
+      prevDiff.current = -1;
+    }
+
+    if (evCache.current.length === 0) {
+      setIsDragging(false);
+
+      if (tapStart.current.valid && containerRef.current && imgRef.current) {
+        // Invalidate immediate subsequent events claiming to be the same tap
+        tapStart.current.valid = false;
+
+        const now = Date.now();
+        if (now - lastTapTime.current < 300) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const newZoom = Math.min(3, zoom + 0.5);
+
+          if (newZoom !== zoom) {
+            const rect = containerRef.current.getBoundingClientRect();
+
+            const cx = e.clientX - rect.left - rect.width / 2;
+            const cy = e.clientY - rect.top - rect.height / 2;
+
+            const newPanX = cx - (cx - pan.x) / zoom * newZoom;
+            const newPanY = cy - (cy - pan.y) / zoom * newZoom;
+
+            const viewportW = containerRef.current.clientWidth;
+            const viewportH = containerRef.current.clientHeight;
+            let imgW = imgRef.current.clientWidth;
+            let imgH = imgRef.current.clientHeight;
+
+            if (rotation % 180 !== 0) {
+              [imgW, imgH] = [imgH, imgW];
+            }
+
+            const maxPanX = Math.max(0, (imgW * newZoom - viewportW) / 2);
+            const maxPanY = Math.max(0, (imgH * newZoom - viewportH) / 2);
+
+            const clampedX = Math.min(Math.max(newPanX, -maxPanX), maxPanX);
+            const clampedY = Math.min(Math.max(newPanY, -maxPanY), maxPanY);
+
+            setZoom(newZoom);
+            setPan({ x: clampedX, y: clampedY });
+          }
+          lastTapTime.current = 0;
+        } else {
+          lastTapTime.current = now;
+        }
+      }
+    } else if (evCache.current.length === 1 && zoom > 1) {
+      const remaining = evCache.current[0];
+      dragStart.current = { x: remaining.clientX - pan.x, y: remaining.clientY - pan.y };
+      setIsDragging(true);
+    } else {
+      setIsDragging(false);
+    }
   };
 
   const handleReset = (e: React.MouseEvent) => {
@@ -233,13 +337,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           draggable={false}
         />
       ) : (
         <div className="text-slate-400">No Image</div>
       )}
 
-      {/* Navigation Arrows (Multi Mode Only) */}
       {isMultiMode && images!.length > 1 && (
         <>
           <button
@@ -255,7 +359,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
             <ChevronLeft size={24} />
           </button>
 
-          {/* Pagination Dots */}
           <div
             className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-slate-900/50 backdrop-blur-md rounded-full z-20 shadow-lg"
             onClick={(e) => e.stopPropagation()}
@@ -274,7 +377,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
         </>
       )}
 
-      {/* Toggle Tag (Show/Hide) */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -291,7 +393,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
         {isToolbarHidden ? 'הצג' : 'הסתר'}
       </button>
 
-      {/* Floating Toolbar */}
       <div
         className={`absolute bottom-12 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ${isToolbarHidden ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
           }`}
@@ -306,7 +407,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, images, initialIndex = 0
           startTagHideTimer();
         }}
       >
-        {/* Toolbar */}
         <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 shadow-2xl">
           <button
             onClick={handleReset}
