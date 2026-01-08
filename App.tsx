@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import {
   ChefHat, Library, Edit2, RefreshCw, Check, Sparkles, UtensilsCrossed,
-  BookOpen, ArrowRight, ArrowLeft, LayoutGrid, List, Loader2, AlertCircle, X,
+  BookOpen, ArrowLeft, LayoutGrid, List, Loader2, AlertCircle, X,
   ZoomIn, Clock, Tag, ChevronDown, ChevronUp, Copy, FileText, Save,
   ChevronRight, ChevronLeft, Trash2, Download, Heart, MessageSquare, ShieldCheck, LogOut, Calendar, Plus
 } from 'lucide-react';
