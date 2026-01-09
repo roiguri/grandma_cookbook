@@ -110,7 +110,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, onChange, categories, o
   };
 
   return (
-    <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl border border-slate-100 h-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+    <div className="w-full bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl border border-slate-100 h-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-500">
       <div className="overflow-y-auto custom-scrollbar p-8 sm:p-12 space-y-12 flex-grow">
       <div className="relative group">
         <input

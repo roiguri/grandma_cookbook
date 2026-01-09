@@ -9,7 +9,7 @@ interface RecipeDisplayProps {
 
 const RecipeDisplay: React.FC<RecipeDisplayProps> = ({ recipe }) => {
   return (
-    <div className="bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl shadow-slate-200/50 border border-slate-100 h-full flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
+    <div className="w-full bg-white rounded-[2rem] sm:rounded-[4rem] shadow-2xl shadow-slate-200/50 border border-slate-100 h-full flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-1000">
 
       <div className="overflow-y-auto custom-scrollbar p-10 sm:p-16 flex-grow">
       {/* Header */}
