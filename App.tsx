@@ -62,17 +62,16 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<string[]>(DEFAULT_RECIPE_CATEGORIES);
 
   useEffect(() => {
-    // Subscribe to dynamic categories
+    if (!user) return;
     const unsubscribe = dbService.subscribeToCategories((list) => {
       if (list && list.length > 0) {
         setCategories(list);
       } else {
-        // Fallback to default if DB is empty
         setCategories(DEFAULT_RECIPE_CATEGORIES);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const recipesForReview = useMemo(() => {
     if (reviewFilter === 'unreviewed') {
@@ -419,33 +418,6 @@ const App: React.FC = () => {
   if (!user) {
     return <LoginScreen />;
   }
-
-  // Access Control Gate
-  const allowedEmail = import.meta.env.VITE_ALLOWED_USER_EMAIL;
-  if (allowedEmail && user.email !== allowedEmail) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
-        <div className="bg-red-50 p-8 rounded-[2rem] border border-red-100 max-w-md w-full shadow-xl">
-          <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck size={32} className="text-red-500" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-2">אין גישה</h2>
-          <p className="text-slate-600 mb-8 font-medium leading-relaxed">
-            החשבון <strong>{user.email}</strong> אינו מורשה לגשת לאפליקציה זו.
-            <br />
-            זוהי אפליקציה פרטית.
-          </p>
-          <button
-            onClick={signOut}
-            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-lg active:scale-95"
-          >
-            התנתק ונסה חשבון אחר
-          </button>
-        </div>
-      </div>
-    );
-  }
-
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-12 antialiased">

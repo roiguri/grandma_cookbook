@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe } from "../types";
 import { getMimeType, getBase64Data } from "./imageUtils";
+import { auth } from "./firebase";
 
 // Initialize Gemini Client (ONLY used in local dev)
 // Initialize Gemini Client (ONLY used in local dev)
@@ -16,11 +17,15 @@ export const analyzeRecipeImage = async (base64Images: string[], availableCatego
   if (import.meta.env.PROD || !localApiKey) {
     try {
       console.log("Analyzing via Serverless Function...");
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Not authenticated');
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch('/.netlify/functions/analyze-recipe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Optional: Add Auth token here if we implemented strict server-side auth check
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ images: base64Images, availableCategories })
       });

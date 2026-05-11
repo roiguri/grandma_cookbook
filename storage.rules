@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAllowedUser() {
+      return request.auth != null &&
+        request.auth.token.email in
+          firestore.get(/databases/(default)/documents/settings/allowedUsers).data.emails;
+    }
+
+    match /recipes/{allPaths=**} {
+      allow read, write: if isAllowedUser();
+    }
+  }
+}
