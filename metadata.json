@@ -1,7 +1,8 @@
 {
-  "name": "שיפורים לספרייה",
+  "name": "Grandma's Cookbook",
   "description": "אפליקציה חכמה המפענחת מתכונים מתמונות, כולל קטגוריות מצרכים וזמני הכנה, עם תמיכה מלאה בעברית.",
   "requestFramePermissions": [
     "camera"
   ]
 }
+
